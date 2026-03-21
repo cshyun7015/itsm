@@ -22,4 +22,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
     // 🌟 대시보드 통계를 위한 카운트 메서드 추가
     long countByStatus(TicketStatus status);
+
+    // 🌟 SLA 위반 여부로 카운트하는 메서드 추가
+    long countBySlaBreached(boolean slaBreached);
 }

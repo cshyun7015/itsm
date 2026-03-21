@@ -1,9 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SummaryCards from './SummaryCards';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const Dashboard = ({ data }) => {
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // 🌟 SLA 통계 상태 관리
+  const [slaStats, setSlaStats] = useState({ total: 0, breached: 0, compliant: 0, complianceRate: '0.0' });
+
+  // 🌟 컴포넌트 마운트 시 SLA API 호출
+  useEffect(() => {
+    fetch('http://localhost:8080/api/slm/statistics')
+      .then(res => res.json())
+      .then(setSlaStats)
+      .catch(err => console.error('SLA 통계 로드 실패:', err));
+  }, []);
+
+  // SVG 도넛 차트 계산 로직
+  const radius = 60;
+  const circumference = 2 * Math.PI * radius;
+  // 준수율만큼만 초록색 선을 그리고, 나머지는 비워둡니다 (CSS stroke-dashoffset 활용)
+  const strokeDashoffset = circumference - (circumference * parseFloat(slaStats.complianceRate)) / 100;
 
   // 🌟 샘플 데이터 생성 API 호출 함수
   const handleGenerateData = () => {
@@ -88,6 +105,53 @@ const Dashboard = ({ data }) => {
           </div>
         </div>
       </div>
+
+      {/* 🌟 신규: SLA 통계 및 도넛 차트 영역 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+        
+        {/* 왼쪽: 도넛 차트 */}
+        <div className="stat-card" style={{ padding: '2rem', backgroundColor: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', alignSelf: 'flex-start' }}>🎯 SLA 준수율</h3>
+          
+          <div style={{ position: 'relative', width: '160px', height: '160px' }}>
+            <svg width="160" height="160" viewBox="0 0 160 160" style={{ transform: 'rotate(-90deg)' }}>
+              {/* 배경 원 (빨간색 - 위반 부분) */}
+              <circle cx="80" cy="80" r={radius} fill="transparent" stroke="#fee2e2" strokeWidth="15" />
+              {/* 진행 원 (초록색 - 준수 부분) */}
+              <circle cx="80" cy="80" r={radius} fill="transparent" stroke="#10b981" strokeWidth="15" 
+                strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} 
+                style={{ transition: 'stroke-dashoffset 1s ease-in-out' }} strokeLinecap="round" 
+              />
+            </svg>
+            {/* 가운데 퍼센트 텍스트 */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+              <span style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{slaStats.complianceRate}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 오른쪽: 상세 수치 */}
+        <div className="stat-card" style={{ padding: '2rem', backgroundColor: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <h3 style={{ margin: '0 0 1.5rem 0', color: 'var(--text-main)' }}>📊 서비스 수준(SLM) 현황 요약</h3>
+          
+          <div style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+            <div>
+              <div style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>전체 발생 인시던트</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{slaStats.total}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.2rem', color: '#166534', marginBottom: '0.5rem' }}>SLA 준수 완료 / 진행</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#10b981' }}>{slaStats.compliant}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.2rem', color: '#991b1b', marginBottom: '0.5rem' }}>SLA 기한 초과 (Breach)</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#ef4444' }}>{slaStats.breached}</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
     </div>
   );
 };

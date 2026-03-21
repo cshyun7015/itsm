@@ -24,6 +24,7 @@ public class SampleDataService {
     private final ServiceCatalogRepository serviceCatalogRepository;
     private final CommonCodeRepository commonCodeRepository; // 🌟 추가
     private final UserRepository userRepository;
+    private final SlaPolicyRepository slaPolicyRepository;
 
     @Transactional
     public void generateDummyData() {
@@ -106,9 +107,14 @@ public class SampleDataService {
             ciList.add(ciRepository.save(ci));
         }
 
+        // 🌟 SLA 정책 목록을 미리 불러옵니다.
+        List<SlaPolicy> slaPolicies = slaPolicyRepository.findAll();
+
         // 4. Incident (장애) 100개 생성
         TicketStatus[] incStatuses = {TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED};
-        Priority[] priorities = Priority.values();
+
+        // 🌟 변수명 충돌을 피하기 위해 이름을 'priorityValues'로 변경!
+        Priority[] priorityValues = Priority.values();
 
         for (int i = 1; i <= 100; i++) {
             Incident inc = new Incident();
@@ -116,17 +122,44 @@ public class SampleDataService {
             inc.setDescription("시스템 오류 및 응답 지연이 발생했습니다.");
             inc.setRequesterName("사용자" + (i % 20 + 1));
             inc.setRequesterId(String.valueOf(1000 + (i % 20 + 1)));
-            inc.setStatus(incStatuses[random.nextInt(incStatuses.length)]);
-            inc.setPriority(priorities[random.nextInt(priorities.length)]);
+
+            TicketStatus randomStatus = incStatuses[random.nextInt(incStatuses.length)];
+
+            // 🌟 에러의 원인 해결! (개별 인시던트의 우선순위를 'randomPriority'라는 이름으로 선언)
+            Priority randomPriority = priorityValues[random.nextInt(priorityValues.length)];
+
+            inc.setStatus(randomStatus);
+            inc.setPriority(randomPriority);
             inc.setCompany(defaultCompany);
 
+            // SLA 목표 시간 및 위반(Breach) 계산 로직 (1~5일 전 과거로 세팅)
+            LocalDateTime randomPastDate = LocalDateTime.now()
+                    .minusDays(random.nextInt(5))
+                    .minusHours(random.nextInt(24));
+            inc.setCreatedAt(randomPastDate);
+
+            // 해당 우선순위에 맞는 SLA 정책 찾기
+            SlaPolicy matchingPolicy = slaPolicies.stream()
+                    .filter(p -> "INCIDENT".equals(p.getTargetType()) && p.getPriority().equals(randomPriority.name()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (matchingPolicy != null) {
+                // 목표 해결 일시 = 생성일시 + SLA 정책의 목표 시간
+                LocalDateTime targetTime = randomPastDate.plusHours(matchingPolicy.getTargetResolutionHours());
+                inc.setTargetResolutionTime(targetTime);
+
+                // 현재 시간이 목표 시간을 지났다면 SLA 위반! (조건식의 결과 boolean을 바로 대입)
+                inc.setSlaBreached(randomStatus != TicketStatus.RESOLVED && LocalDateTime.now().isAfter(targetTime));
+            }
+
+            // 자산 연결
             ConfigurationItem randomCi = ciList.get(random.nextInt(ciList.size()));
             inc.setCiId(randomCi.getId());
             inc.setCiName(randomCi.getCiName());
 
             incidentRepository.save(inc);
         }
-
         // 5. Service Request (서비스 요청) 100개 생성
         String[] srStatuses = {"PENDING", "APPROVED", "REJECTED"};
         for (int i = 1; i <= 100; i++) {
@@ -195,5 +228,44 @@ public class SampleDataService {
                 companyRepository.save(c);
             }
         }
+
+        // 🌟 SLA 기본 정책 4가지 자동 생성
+        if (slaPolicyRepository.count() == 0) {
+            // 이미 선언된 Priority Enum을 순회하며 정책을 만듭니다.
+            // 1. 인시던트 정책 생성 (방금 만든 추출 메서드 활용!)
+            for (Priority p : Priority.values()) {
+                slaPolicyRepository.save(createIncidentPolicy(p));
+            }
+
+            // 2. 서비스 요청(SR) 기본 정책 추가
+            // 서비스 요청(SR)에 대한 기본 정책도 1개 추가
+            SlaPolicy srPolicy = new SlaPolicy();
+            srPolicy.setPolicyName("일반 서비스 요청 처리");
+            srPolicy.setTargetType("SERVICE_REQUEST");
+            srPolicy.setPriority("MEDIUM");
+            srPolicy.setTargetResolutionHours(48);
+            srPolicy.setDescription("일반적인 서비스 요청은 48시간(2일) 이내에 처리되어야 합니다.");
+            slaPolicyRepository.save(srPolicy);
+        }
+    }
+
+    // 🌟 밖으로 빼낸(Extracted) 전용 메서드
+    private SlaPolicy createIncidentPolicy(Priority p) {
+        SlaPolicy policy = new SlaPolicy();
+        policy.setPolicyName("장애 해결 보장 - " + p.name());
+        policy.setTargetType("INCIDENT");
+        policy.setPriority(p.name());
+
+        int targetHour = switch (p) {
+            case CRITICAL -> 2;
+            case HIGH -> 4;
+            case MEDIUM -> 24;
+            case LOW -> 72;
+        };
+
+        policy.setTargetResolutionHours(targetHour);
+        policy.setDescription(p.name() + " 등급 장애는 " + targetHour + "시간 이내에 해결해야 합니다.");
+
+        return policy; // 완성된 policy 객체 반환!
     }
 }

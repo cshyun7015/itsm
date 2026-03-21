@@ -17,6 +17,9 @@ import IncidentDetailModal from './components/Incident/IncidentDetailModal';
 import ServiceRequestDetailModal from './components/Catalog/ServiceRequestDetailModal';
 import ChangeRequestModal from './components/Change/ChangeRequestModal';
 import ChangeDetailModal from './components/Change/ChangeDetailModal';
+
+import SlaPolicyTable from './components/SLM/SlaPolicyTable';
+
 import './App.css';
 
 function App() {
@@ -77,6 +80,11 @@ function App() {
         <button className={`nav-tab ${currentTab === 'CHANGE' ? 'active' : ''}`} onClick={() => setCurrentTab('CHANGE')}>변경 관리</button>
         <button className={`nav-tab ${currentTab === 'CMDB' ? 'active' : ''}`} onClick={() => setCurrentTab('CMDB')}>자산/CMDB</button>
         
+        {/* 🌟 새로 추가된 SLM 탭 */}
+        <button className={`nav-tab ${currentTab === 'SLM' ? 'active' : ''}`} onClick={() => setCurrentTab('SLM')} style={{ color: currentTab === 'SLM' ? 'var(--primary)' : '#475569', fontWeight: 'bold' }}>
+          📊 SLM (서비스 수준)
+        </button>
+
         {/* 🌟 시스템 관리 탭 추가 */}
         <button className={`nav-tab ${currentTab === 'SYSTEM' ? 'active' : ''}`} onClick={() => setCurrentTab('SYSTEM')} style={{ marginLeft: 'auto', color: currentTab === 'SYSTEM' ? 'var(--primary)' : '#475569' }}>
           ⚙️ 시스템 관리
@@ -135,6 +143,11 @@ function App() {
             </div>
             <CMDBTable data={cmdbItems} />
           </>
+        )}
+
+        {/* 🌟 2. SLM 탭 컨텐츠 렌더링 */}
+        {currentTab === 'SLM' && (
+          <SlaPolicyTable />
         )}
 
         {/* 🌟 시스템 관리 탭 컨텐츠 */}
