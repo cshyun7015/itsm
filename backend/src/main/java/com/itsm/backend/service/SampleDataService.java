@@ -27,6 +27,7 @@ public class SampleDataService {
     private final SlaPolicyRepository slaPolicyRepository;
     private final EventRepository eventRepository;
     private final ProblemRepository problemRepository;
+    private final ReleaseRecordRepository releaseRepository;
 
     @Transactional
     public void generateDummyData() {
@@ -308,6 +309,41 @@ public class SampleDataService {
                 prob.setTargetResolutionDate(LocalDateTime.now().plusDays(random.nextInt(60)));
 
                 problemRepository.save(prob);
+            }
+        }
+
+        // 🌟 Release (배포 관리) 20개 생성
+        if (releaseRepository.count() == 0) {
+            String[] relStatuses = {"PLANNING", "BUILDING", "TESTING", "DEPLOYING", "COMPLETED", "FAILED"};
+            String[] relTypes = {"MAJOR", "MINOR", "EMERGENCY"};
+            String[] titles = {
+                    "정기 통합 시스템 업데이트",
+                    "결제 모듈 보안 패치",
+                    "신규 대시보드 UI 배포",
+                    "DB 성능 개선 인덱스 추가 반영"
+            };
+
+            for (int i = 1; i <= 20; i++) {
+                ReleaseRecord rel = new ReleaseRecord();
+                rel.setVersion("v" + (random.nextInt(3) + 1) + "." + random.nextInt(10) + "." + i);
+                rel.setTitle(titles[random.nextInt(titles.length)] + " (" + rel.getVersion() + ")");
+                rel.setDescription("승인된 변경(Change) 건들을 묶어서 상용 환경에 배포합니다.");
+
+                rel.setStatus(relStatuses[random.nextInt(relStatuses.length)]);
+                rel.setReleaseType(relTypes[random.nextInt(relTypes.length)]);
+                rel.setManagerName("배포관리자" + (i % 3 + 1));
+                rel.setCompany(defaultCompany);
+
+                // 배포 예정일은 과거~미래 랜덤
+                LocalDateTime target = LocalDateTime.now().plusDays(random.nextInt(30) - 15);
+                rel.setTargetDate(target);
+
+                // 완료되거나 실패한 경우 실제 배포 일시 기록
+                if ("COMPLETED".equals(rel.getStatus()) || "FAILED".equals(rel.getStatus())) {
+                    rel.setActualDate(target.plusHours(random.nextInt(5) + 1));
+                }
+
+                releaseRepository.save(rel);
             }
         }
     }

@@ -21,6 +21,7 @@ import ChangeDetailModal from './components/Change/ChangeDetailModal';
 import SlaPolicyTable from './components/SLM/SlaPolicyTable';
 import EventConsole from './components/Event/EventConsole';
 import ProblemTable from './components/Problem/ProblemTable';
+import ReleaseTable from './components/Release/ReleaseTable';
 
 import './App.css';
 
@@ -92,6 +93,12 @@ function App() {
         </button>
         
         <button className={`nav-tab ${currentTab === 'CHANGE' ? 'active' : ''}`} onClick={() => setCurrentTab('CHANGE')}>변경 관리</button>
+        
+        {/* 🌟 새로 추가된 배포 관리 탭 (변경과 자산 사이) */}
+        <button className={`nav-tab ${currentTab === 'RELEASE' ? 'active' : ''}`} onClick={() => setCurrentTab('RELEASE')}>
+          🚀 배포 관리
+        </button>
+        
         <button className={`nav-tab ${currentTab === 'CMDB' ? 'active' : ''}`} onClick={() => setCurrentTab('CMDB')}>자산/CMDB</button>
         
         {/* 🌟 새로 추가된 SLM 탭 */}
@@ -154,6 +161,11 @@ function App() {
             </div>
             <ChangeRequestTable data={changeRequests} onRowClick={setSelectedChange} />
           </>
+        )}
+
+        {/* 🌟 배포 관리 컨텐츠 렌더링 */}
+        {currentTab === 'RELEASE' && (
+          <ReleaseTable />
         )}
 
         {/* 🌟 5. CMDB 탭 컨텐츠 */}
