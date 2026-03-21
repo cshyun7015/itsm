@@ -19,6 +19,9 @@ public class Company extends BaseTimeEntity {
     @Column(nullable = false, unique = true, length = 100)
     private String name; // 고객사명 (예: 구글 코리아)
 
+    // 🌟 이 필드를 추가해 주세요
+    private String address;
+
     @Column(unique = true, length = 50)
     private String code; // 식별 코드 (예: GOOGLE-KR)
 

@@ -1,75 +1,70 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const ServiceRequestTable = ({ data, onRowClick }) => {
-  
-  // 상태별 색상 지정을 위한 헬퍼 함수
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'PENDING': return '#f39c12';   // 주황 (대기)
-      case 'APPROVED': return '#27ae60';  // 초록 (승인)
-      case 'REJECTED': return '#e74c3c';  // 빨강 (반려)
-      default: return '#333';
-    }
-  };
+  // 🌟 페이징 상태 관리
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  // 테이블 헤더 스타일
-  const thStyle = { 
-    padding: '12px', 
-    textAlign: 'left', 
-    fontSize: '0.9rem', 
-    color: '#444',
-    borderBottom: '2px solid #dee2e6' 
-  };
+  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentData = data.slice(indexOfFirstItem, indexOfLastItem);
 
-  // 테이블 셀 스타일
-  const tdStyle = { 
-    padding: '12px', 
-    fontSize: '0.9rem',
-    borderBottom: '1px solid #eee' 
-  };
+  const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
-    <div style={{ marginTop: '20px', overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ backgroundColor: '#f8f9fa' }}>
-            <th style={thStyle}>ID</th>
-            <th style={thStyle}>서비스 항목</th>
-            <th style={thStyle}>제목</th>
-            <th style={thStyle}>요청자</th>
-            <th style={thStyle}>승인 상태</th>
-            <th style={thStyle}>희망 완료일</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data && data.length > 0 ? (
-            data.map((req) => (
-              <tr 
-                key={req.id} 
-                onClick={() => onRowClick(req)} 
-                style={{ cursor: 'pointer', transition: 'background 0.2s' }}
-                onMouseOver={e => e.currentTarget.style.backgroundColor = '#f9f9f9'}
-                onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}
-              >
-                <td style={tdStyle}>{req.id}</td>
-                <td style={tdStyle}>{req.catalog?.name || '-'}</td>
-                <td style={tdStyle}>{req.title}</td>
-                <td style={tdStyle}>{req.requesterName}</td>
-                <td style={{ ...tdStyle, fontWeight: 'bold', color: getStatusColor(req.approvalStatus) }}>
+    <div>
+      <div className="table-wrapper">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>카탈로그</th>
+              <th>요청 제목</th>
+              <th>요청자</th>
+              <th>상태</th>
+              <th>희망 완료일</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentData.map(req => (
+              <tr key={req.id} onClick={() => onRowClick(req)}>
+                <td>{req.id}</td>
+                <td>
+                  <span style={{ backgroundColor: '#eff6ff', color: 'var(--primary)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                    {req.catalog ? req.catalog.name : '기타'}
+                  </span>
+                </td>
+                <td style={{ fontWeight: '500' }}>{req.title}</td>
+                <td>{req.requesterName}</td>
+                <td style={{ color: req.approvalStatus === 'PENDING' ? '#f59e0b' : req.approvalStatus === 'APPROVED' ? '#10b981' : 'var(--text-main)', fontWeight: 'bold' }}>
                   {req.approvalStatus}
                 </td>
-                <td style={tdStyle}>{req.targetDeliveryDate}</td>
+                <td>{req.targetDeliveryDate || '미지정'}</td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
-                신청 내역이 존재하지 않습니다.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+            ))}
+            {data.length === 0 && (
+              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>등록된 서비스 요청이 없습니다.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 🌟 페이지네이션 UI */}
+      {totalPages > 1 && (
+        <div className="pagination-container">
+          <button className="page-btn" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>이전</button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter(page => Math.abs(currentPage - page) <= 2 || page === 1 || page === totalPages)
+            .map((page, index, array) => (
+              <React.Fragment key={page}>
+                {index > 0 && page - array[index - 1] > 1 && <span style={{ color: 'var(--text-muted)' }}>...</span>}
+                <button className={`page-btn ${currentPage === page ? 'active' : ''}`} onClick={() => handlePageChange(page)}>{page}</button>
+              </React.Fragment>
+          ))}
+          <button className="page-btn" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>다음</button>
+        </div>
+      )}
     </div>
   );
 };
