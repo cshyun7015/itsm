@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api'; // 🌟 1. 403 에러 방지를 위해 apiFetch 임포트!
 
 const EventConsole = () => {
   const [events, setEvents] = useState([]);
@@ -7,10 +8,10 @@ const EventConsole = () => {
 
   // API 호출하여 이벤트 목록 가져오기
   const fetchEvents = () => {
-    fetch('http://localhost:8080/api/webhook/events')
+    // 🌟 2. 기본 fetch 대신 apiFetch 사용
+    apiFetch('/webhook/events')
       .then(res => res.json())
       .then(data => {
-        // 최신 이벤트가 위로 오도록 역순 정렬
         const sortedData = data.sort((a, b) => b.id - a.id);
         setEvents(sortedData);
       })
@@ -23,6 +24,37 @@ const EventConsole = () => {
     const interval = setInterval(fetchEvents, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  // 🌟 3. 이벤트를 장애(Incident) 티켓으로 전환하는 마법의 함수!
+  const handleCreateIncident = (ev) => {
+    if (!window.confirm(`해당 이벤트를 장애(Incident)로 접수하시겠습니까?\n메시지: ${ev.message}`)) return;
+
+    // 백엔드 인시던트 API가 요구하는 형식에 맞춰 자동 접수 데이터를 만듭니다.
+    const incidentPayload = {
+      title: `[자동접수] ${ev.severity} 이벤트 - ${ev.source}`,
+      description: `이벤트 관제 시스템에서 자동 전환된 장애입니다.\n- 메시지: ${ev.message}\n- 발생 노드: ${ev.node}\n- 발생 일시: ${ev.timestamp}`,
+      urgency: ev.severity === 'CRITICAL' ? 'HIGH' : 'MEDIUM',
+      status: 'OPEN',
+      category: 'INFRA'
+    };
+
+    apiFetch('/incidents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(incidentPayload)
+    })
+    .then(res => {
+      if (res.ok) {
+        alert('🚨 장애 티켓이 성공적으로 생성되었습니다!');
+        // 💡 백엔드에 이벤트를 '처리됨(PROCESSED)'으로 바꾸는 API가 있다면 여기서 호출합니다.
+        // apiFetch(`/webhook/events/${ev.id}/status?status=PROCESSED`, { method: 'PATCH' });
+        fetchEvents(); // 목록 새로고침
+      } else {
+        alert('장애 접수에 실패했습니다.');
+      }
+    })
+    .catch(err => console.error('장애 전환 에러:', err));
+  };
 
   const totalPages = Math.ceil(events.length / itemsPerPage);
   const currentEvents = events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -52,13 +84,12 @@ const EventConsole = () => {
           <thead>
             <tr>
               <th>ID</th>
-              <th>심각도 (Severity)</th>
+              <th>심각도</th>
               <th>발생 출처</th>
               <th>메시지</th>
               <th>노드 (IP/Host)</th>
               <th>처리 상태</th>
-              <th>연결된 장애(INC)</th>
-              <th>발생 일시</th>
+              <th>액션</th>
             </tr>
           </thead>
           <tbody>
@@ -68,17 +99,12 @@ const EventConsole = () => {
                 <tr key={ev.id} style={{ backgroundColor: ev.severity === 'CRITICAL' && ev.status === 'NEW' ? '#fff1f2' : 'transparent' }}>
                   <td>{ev.id}</td>
                   <td>
-                    <span style={{ 
-                      padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold',
-                      backgroundColor: style.bg, color: style.text 
-                    }}>
+                    <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold', backgroundColor: style.bg, color: style.text }}>
                       {style.icon} {ev.severity}
                     </span>
                   </td>
                   <td style={{ fontWeight: '600' }}>{ev.source}</td>
-                  <td style={{ fontWeight: 'bold', color: ev.severity === 'CRITICAL' ? '#e11d48' : 'var(--text-main)' }}>
-                    {ev.message}
-                  </td>
+                  <td style={{ fontWeight: 'bold', color: ev.severity === 'CRITICAL' ? '#e11d48' : 'var(--text-main)' }}>{ev.message}</td>
                   <td>{ev.node || '-'}</td>
                   <td>
                     <span style={{ color: ev.status === 'PROCESSED' ? '#10b981' : (ev.status === 'NEW' ? '#ef4444' : '#64748b'), fontWeight: 'bold' }}>
@@ -86,18 +112,22 @@ const EventConsole = () => {
                     </span>
                   </td>
                   <td>
-                    {ev.relatedIncidentId ? (
-                      <span style={{ backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                        INC-{ev.relatedIncidentId}
-                      </span>
-                    ) : '-'}
+                    {/* 🌟 미처리 상태인 경우에만 장애 전환 버튼 표시 */}
+                    {ev.status === 'NEW' ? (
+                      <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: '0.85rem' }} onClick={() => handleCreateIncident(ev)}>
+                        장애 전환 🚀
+                      </button>
+                    ) : (
+                      ev.relatedIncidentId ? (
+                        <span style={{ backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>INC-{ev.relatedIncidentId}</span>
+                      ) : '-'
+                    )}
                   </td>
-                  <td style={{ fontSize: '0.85rem' }}>{ev.timestamp ? ev.timestamp.replace('T', ' ').substring(0, 19) : '-'}</td>
                 </tr>
               );
             })}
             {events.length === 0 && (
-              <tr><td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>수신된 이벤트가 없습니다. Webhook API로 데이터를 전송해 보세요.</td></tr>
+              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>수신된 이벤트가 없습니다. 시스템이 평화롭습니다!</td></tr>
             )}
           </tbody>
         </table>

@@ -10,6 +10,11 @@ const Dashboard = () => {
   // 🌟 2. 요약 데이터를 담을 빈 그릇(상태)을 하나 만들어 줍니다.
   const [summaryData, setSummaryData] = useState({});
 
+  const [memoryUsage, setMemoryUsage] = useState(null);
+  const [isWarning, setIsWarning] = useState(false); // 🌟 경고 상태를 관리하는 바구니
+  // 🌟 용량 임계치(Threshold) 설정: 400MB를 넘으면 위험하다고 판단!
+  const THRESHOLD_MB = 400;
+
   useEffect(() => {
     // SLA 통계 로드
     apiFetch('/slm/statistics')
@@ -60,6 +65,41 @@ const Dashboard = () => {
     { name: '목', 장애: 2, 요청: 8, 변경: 0 },
     { name: '금', 장애: 1, 요청: 4, 변경: 3 },
   ];
+
+  // 🌟 서버의 현재 용량(메모리)을 측정하는 함수
+  const checkServerCapacity = () => {
+    fetch('http://localhost:8080/actuator/metrics/jvm.memory.used')
+      .then(res => res.json())
+      .then(data => {
+        const usedMemoryMB = (data.measurements[0].value / (1024 * 1024)).toFixed(2);
+        setMemoryUsage(usedMemoryMB);
+
+        // 🌟 핵심 로직: 현재 용량이 임계치를 넘었는지 검사합니다.
+        if (parseFloat(usedMemoryMB) > THRESHOLD_MB) {
+          setIsWarning(true); // 빨간불 켜기!
+
+          // 🌟 로컬 스토리지 대신 백엔드 웹훅 API로 이벤트를 쏩니다!
+          apiFetch('/webhook/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              severity: 'CRITICAL',
+              source: 'Capacity Monitor',
+              message: `[용량 초과] 서버 메모리 위험 수치 도달 (${usedMemoryMB} MB)`,
+              node: 'localhost:8080'
+            })
+          }).catch(err => console.error('웹훅 전송 실패:', err));
+
+          console.warn(`🚨 [이벤트 발생] 서버 메모리가 ${THRESHOLD_MB}MB를 초과했습니다!`);
+          
+          // 💡 실제 엔터프라이즈 환경이라면 여기서 아래와 같은 API를 몰래 호출합니다.
+          // apiFetch('/api/incidents', { method: 'POST', body: JSON.stringify({ title: '서버 메모리 용량 초과 장애 발생' }) });
+        } else {
+          setIsWarning(false); // 정상 상태면 파란불!
+        }
+      })
+      .catch(err => console.error('용량 지표 로드 실패:', err));
+  };
 
   return (
     <div className="dashboard-container">
@@ -157,6 +197,60 @@ const Dashboard = () => {
           </div>
         </div>
 
+      </div>
+
+      {/* 🌟 용량 측정 테스트 영역 */}
+      {/* 🌟 경고 상태(isWarning)에 따라 배경색과 테두리 색상이 동적으로 변합니다! */}
+      <div style={{ 
+        padding: '1.5rem', 
+        backgroundColor: isWarning ? '#fef2f2' : '#f8fafc', 
+        border: `2px solid ${isWarning ? '#ef4444' : '#cbd5e1'}`, 
+        borderRadius: '8px', 
+        marginBottom: '2rem',
+        transition: 'all 0.3s ease'
+      }}>
+        <h4 style={{ margin: '0 0 1rem 0', color: isWarning ? '#b91c1c' : '#0f172a' }}>
+          🖥️ 실시간 서버 용량(Capacity) 모니터링
+        </h4>
+        
+        <button 
+          className="btn" 
+          onClick={checkServerCapacity} 
+          style={{ 
+            backgroundColor: isWarning ? '#ef4444' : '#3b82f6', 
+            color: 'white', 
+            border: 'none', 
+            padding: '10px 20px', 
+            borderRadius: '6px', 
+            cursor: 'pointer' 
+          }}
+        >
+          지금 서버 메모리 얼마나 쓰고 있어? 🔍
+        </button>
+        
+        {memoryUsage && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold', color: '#0f172a' }}>
+              현재 사용 중인 메모리: <span style={{ color: isWarning ? '#ef4444' : '#3b82f6' }}>{memoryUsage} MB</span>
+              <span style={{ fontSize: '0.9rem', color: '#64748b', marginLeft: '10px', fontWeight: 'normal' }}>
+                (위험 임계치: {THRESHOLD_MB} MB)
+              </span>
+            </p>
+            
+            {/* 🌟 임계치를 초과했을 때만 나타나는 경고 메시지 영역 */}
+            {isWarning && (
+              <div style={{ 
+                marginTop: '1rem', padding: '1rem', backgroundColor: '#fee2e2', 
+                borderLeft: '4px solid #b91c1c', color: '#991b1b', fontWeight: 'bold' 
+              }}>
+                🚨 [용량 경고] 메모리 사용량이 안전 기준치를 초과했습니다! <br/>
+                <span style={{ fontSize: '0.85rem', fontWeight: 'normal', color: '#7f1d1d' }}>
+                  * 시스템 자동화: 현재 상태가 5분 이상 지속될 경우, 이벤트 관제 센터에 알람이 전송되며 자동 장애 티켓이 발행됩니다.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
     </div>
