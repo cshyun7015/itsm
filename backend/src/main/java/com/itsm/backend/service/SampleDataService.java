@@ -25,6 +25,7 @@ public class SampleDataService {
     private final CommonCodeRepository commonCodeRepository; // 🌟 추가
     private final UserRepository userRepository;
     private final SlaPolicyRepository slaPolicyRepository;
+    private final EventRepository eventRepository;
 
     @Transactional
     public void generateDummyData() {
@@ -246,6 +247,34 @@ public class SampleDataService {
             srPolicy.setTargetResolutionHours(48);
             srPolicy.setDescription("일반적인 서비스 요청은 48시간(2일) 이내에 처리되어야 합니다.");
             slaPolicyRepository.save(srPolicy);
+        }
+
+        // 🌟 Event (이벤트 로그) 50개 생성
+        if (eventRepository.count() == 0) {
+            String[] sources = {"Zabbix", "AWS CloudWatch", "Datadog", "Prometheus"};
+            String[] severities = {"INFO", "WARNING", "CRITICAL"};
+            String[] messages = {
+                    "CPU 사용률 80% 도달", "디스크 여유 공간 10% 미만", "DB Connection Timeout",
+                    "백업 작업 정상 완료", "네트워크 트래픽 스파이크 감지"
+            };
+
+            for (int i = 1; i <= 50; i++) {
+                Event ev = new Event();
+                ev.setSource(sources[random.nextInt(sources.length)]);
+                ev.setSeverity(severities[random.nextInt(severities.length)]);
+                ev.setMessage(messages[random.nextInt(messages.length)]);
+                ev.setNode("192.168.1." + (random.nextInt(254) + 1));
+
+                // CRITICAL인 경우 이미 처리된(PROCESSED) 상태로, 나머지는 NEW로 세팅
+                if ("CRITICAL".equals(ev.getSeverity())) {
+                    ev.setStatus("PROCESSED");
+                    ev.setRelatedIncidentId((long) (random.nextInt(100) + 1)); // 임의의 장애 티켓과 연결
+                } else {
+                    ev.setStatus("NEW");
+                }
+
+                eventRepository.save(ev);
+            }
         }
     }
 

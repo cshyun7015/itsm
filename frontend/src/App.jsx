@@ -19,6 +19,7 @@ import ChangeRequestModal from './components/Change/ChangeRequestModal';
 import ChangeDetailModal from './components/Change/ChangeDetailModal';
 
 import SlaPolicyTable from './components/SLM/SlaPolicyTable';
+import EventConsole from './components/Event/EventConsole';
 
 import './App.css';
 
@@ -75,6 +76,12 @@ function App() {
       {/* 🌟 탭 순서 적용: 대시보드 -> 서비스 -> 장애 -> 변경 -> CMDB */}
       <nav className="main-nav">
         <button className={`nav-tab ${currentTab === 'DASHBOARD' ? 'active' : ''}`} onClick={() => setCurrentTab('DASHBOARD')}>대시보드</button>
+        
+        {/* 🌟 새로 추가된 이벤트 관제 탭 */}
+        <button className={`nav-tab ${currentTab === 'EVENT' ? 'active' : ''}`} onClick={() => setCurrentTab('EVENT')} style={{ color: currentTab === 'EVENT' ? '#ef4444' : '#475569', fontWeight: 'bold' }}>
+          🚨 이벤트 관제
+        </button>
+
         <button className={`nav-tab ${currentTab === 'SERVICE_REQUEST' ? 'active' : ''}`} onClick={() => setCurrentTab('SERVICE_REQUEST')}>서비스 요청</button>
         <button className={`nav-tab ${currentTab === 'INCIDENT' ? 'active' : ''}`} onClick={() => setCurrentTab('INCIDENT')}>장애 관리</button>
         <button className={`nav-tab ${currentTab === 'CHANGE' ? 'active' : ''}`} onClick={() => setCurrentTab('CHANGE')}>변경 관리</button>
@@ -94,6 +101,11 @@ function App() {
 
       <main className="content-area">
         {currentTab === 'DASHBOARD' && <Dashboard data={dashboardData} />}
+
+        {/* 🌟 이벤트 관제 컨텐츠 렌더링 */}
+        {currentTab === 'EVENT' && (
+          <EventConsole />
+        )}
 
         {currentTab === 'SERVICE_REQUEST' && (
           <>
