@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api';
 
 const ReleaseTable = () => {
   const [data, setData] = useState([]);
@@ -6,15 +7,18 @@ const ReleaseTable = () => {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/releases')
-      .then(res => res.json())
-      .then(fetchedData => {
-        // 최신 버전/날짜 순 정렬
-        const sortedData = fetchedData.sort((a, b) => b.id - a.id);
-        setData(sortedData);
-      })
-      .catch(err => console.error('배포 데이터 로드 실패:', err));
-  }, []);
+  // 🌟 2. fetch 대신 apiFetch를 사용하고 주소를 간결하게 줄입니다!
+  apiFetch('/releases') 
+    .then(res => {
+      if (!res.ok) throw new Error('데이터 로드 실패');
+      return res.json();
+    })
+    .then(fetchedData => {
+      const sortedData = fetchedData.sort((a, b) => b.id - a.id);
+      setData(sortedData);
+    })
+    .catch(err => console.error('배포 데이터 로드 실패:', err));
+}, []);
 
   const totalPages = Math.ceil(data.length / itemsPerPage);
   const currentData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);

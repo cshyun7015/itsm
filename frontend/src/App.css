@@ -128,3 +128,23 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* 네비게이션 컨테이너 (메뉴들을 감싸는 div) */
+.nav-menu {
+  display: flex;
+  gap: 1.5rem; /* 메뉴 사이 간격 넓게 */
+  overflow-x: auto; /* 화면이 너무 좁으면 가로 스크롤 생성 */
+  white-space: nowrap; /* 🌟 핵심: 절대 줄바꿈 하지 않음! */
+  padding-bottom: 5px; /* 스크롤바 공간 확보 */
+}
+
+/* 네비게이션 아이템 (각각의 버튼/링크) */
+.nav-menu a, .nav-menu button {
+  flex-shrink: 0; /* 🌟 핵심: 공간이 좁아도 찌그러지지 않음! */
+  /* 기존 스타일 유지... */
+}
+
+/* (선택) 가로 스크롤바 안 보이게 숨기기 */
+.nav-menu::-webkit-scrollbar {
+  display: none;
+}

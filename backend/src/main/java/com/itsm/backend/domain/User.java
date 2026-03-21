@@ -12,11 +12,16 @@ public class User {
     private Long id;
 
     @Column(unique = true, nullable = false)
-    private String loginId;    // 로그인 아이디 (예: admin)
+    private String username;    // 로그인 아이디 (예: admin)
 
     private String name;       // 이름 (예: 홍길동)
     private String department; // 소속 부서
-    private String role;       // 권한 (ADMIN, ENGINEER, USER)
+
+    // 🌟 암호화된 비밀번호를 저장할 필드 (필수)
+    @Column(nullable = false)
+    private String password;
+
+    private Role role;       // 권한 (ADMIN, ENGINEER, USER)
 
     private String status = "ACTIVE"; // 상태 (ACTIVE, INACTIVE)
 }

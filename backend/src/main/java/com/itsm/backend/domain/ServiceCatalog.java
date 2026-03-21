@@ -29,5 +29,6 @@ public class ServiceCatalog extends BaseTimeEntity {
     private Integer estimatedDays; // 예상 처리 소요 일수 (SLA 기준)
 
     @Column(name = "is_active")
+    @Builder.Default // 🌟 롬복에게 기본값임을 명시합니다!
     private Boolean isActive = true; // 서비스 제공 활성화 여부
 }

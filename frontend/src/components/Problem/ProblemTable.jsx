@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api';
 
 const ProblemTable = () => {
   const [data, setData] = useState([]);
@@ -6,14 +7,24 @@ const ProblemTable = () => {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/problems')
-      .then(res => res.json())
-      .then(fetchedData => {
-        // 최신 등록된 문제가 위로 오도록 정렬
-        const sortedData = fetchedData.sort((a, b) => b.id - a.id);
-        setData(sortedData);
+    // 💡 주소는 백엔드 API 설계에 맞게 확인해주세요! (예: /problems 또는 /api/problems)
+    apiFetch('/problems')
+      .then(res => {
+        // 🌟 안전장치: 응답이 실패했거나, 바디가 비어있으면(204 No Content 등) 에러로 처리!
+        if (!res.ok) {
+          throw new Error(`서버 에러 발생! 상태 코드: ${res.status}`);
+        }
+        return res.text(); // 일단 텍스트로 받습니다!
       })
-      .catch(err => console.error('문제 데이터 로드 실패:', err));
+      .then(text => {
+        // 🌟 텍스트가 비어있으면 빈 배열을 넣고, 값이 있으면 JSON으로 변환합니다.
+        return text ? JSON.parse(text) : [];
+      })
+      .then(data => setData(data))
+      .catch(err => {
+        console.error('문제 데이터 로드 실패:', err);
+        setData([]); // 에러가 나면 빈 배열로 초기화해서 화면이 안 깨지게 보호!
+      });
   }, []);
 
   const totalPages = Math.ceil(data.length / itemsPerPage);

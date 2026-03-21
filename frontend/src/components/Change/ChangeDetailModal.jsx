@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
+import { apiFetch } from '../../utils/api';
 
 const ChangeDetailModal = ({ request, onClose, onRefresh }) => {
   const [comment, setComment] = useState('');
 
   // 상태 업데이트 API 호출 (PATCH)
   const handleStatusUpdate = (newStatus) => {
-    // 실제 운영 환경에서는 comment(반려 사유 등)도 함께 서버로 보내야 합니다.
-    fetch(`http://localhost:8080/api/changes/${request.id}/status?status=${newStatus}`, {
-      method: 'PATCH',
+    // 🌟 쌩 fetch 대신 apiFetch 사용 (주소도 짧게!)
+    apiFetch(`/changes/${request.id}/status?status=${newStatus}`, {
+      method: 'PATCH', // 또는 백엔드 구현에 따라 PUT
     }).then(res => {
       if (res.ok) {
         alert(`변경 요청 상태가 [${newStatus}] 로 업데이트되었습니다.`);

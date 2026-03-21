@@ -1,37 +1,43 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api'; // 🌟 우리가 만든 심부름꾼 불러오기
 import SummaryCards from './SummaryCards';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
-const Dashboard = ({ data }) => {
+const Dashboard = () => {
   const [isGenerating, setIsGenerating] = useState(false);
-
-  // 🌟 SLA 통계 상태 관리
   const [slaStats, setSlaStats] = useState({ total: 0, breached: 0, compliant: 0, complianceRate: '0.0' });
+  
+  // 🌟 2. 요약 데이터를 담을 빈 그릇(상태)을 하나 만들어 줍니다.
+  const [summaryData, setSummaryData] = useState({});
 
-  // 🌟 컴포넌트 마운트 시 SLA API 호출
   useEffect(() => {
-    fetch('http://localhost:8080/api/slm/statistics')
+    // SLA 통계 로드
+    apiFetch('/slm/statistics')
       .then(res => res.json())
       .then(setSlaStats)
       .catch(err => console.error('SLA 통계 로드 실패:', err));
+
+    // 🌟 3. 백엔드에서 요약 데이터를 직접 가져와서 그릇(summaryData)에 담습니다!
+    apiFetch('/dashboard/summary')
+      .then(res => res.json())
+      .then(setSummaryData)
+      .catch(err => console.error('대시보드 요약 로드 실패:', err));
   }, []);
 
   // SVG 도넛 차트 계산 로직
   const radius = 60;
   const circumference = 2 * Math.PI * radius;
-  // 준수율만큼만 초록색 선을 그리고, 나머지는 비워둡니다 (CSS stroke-dashoffset 활용)
   const strokeDashoffset = circumference - (circumference * parseFloat(slaStats.complianceRate)) / 100;
 
-  // 🌟 샘플 데이터 생성 API 호출 함수
   const handleGenerateData = () => {
     if(!window.confirm('각 테이블에 100개씩 총 400개의 가짜 데이터를 생성합니다. 진행하시겠습니까?')) return;
-    
     setIsGenerating(true);
-    fetch('http://localhost:8080/api/dummy/generate', { method: 'POST' })
+    // 참고: 이 부분도 apiFetch로 바꾸시면 토큰이 담겨서 더 안전합니다!
+    apiFetch('/dummy/generate', { method: 'POST' })
       .then(res => res.text())
       .then(msg => {
         alert(msg);
-        window.location.reload(); // 데이터 갱신을 위해 페이지 새로고침
+        window.location.reload(); 
       })
       .catch(err => {
         console.error(err);
@@ -40,10 +46,11 @@ const Dashboard = ({ data }) => {
       .finally(() => setIsGenerating(false));
   };
 
+  // 🌟 4. 부모가 준 data 대신, 내가 직접 가져온 summaryData를 사용합니다!
   const pieData = [
-    { name: '오픈된 장애', value: data?.openIncidents || 0, color: '#ef4444' },
-    { name: '처리 중인 작업', value: data?.inProgressIncidents || 0, color: '#3b82f6' },
-    { name: '승인 대기 요청', value: data?.pendingRequests || 0, color: '#f59e0b' },
+    { name: '오픈된 장애', value: summaryData.openIncidents || 0, color: '#ef4444' },
+    { name: '처리 중인 작업', value: summaryData.inProgressIncidents || 0, color: '#3b82f6' },
+    { name: '승인 대기 요청', value: summaryData.pendingRequests || 0, color: '#f59e0b' },
   ];
 
   const weeklyData = [
@@ -58,7 +65,6 @@ const Dashboard = ({ data }) => {
     <div className="dashboard-container">
       <div className="action-bar" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between' }}>
         <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.3rem' }}>ITSM 종합 현황 대시보드</h3>
-        {/* 🌟 샘플 데이터 생성 버튼 */}
         <button 
           className="btn btn-outline" 
           onClick={handleGenerateData} 
@@ -69,7 +75,8 @@ const Dashboard = ({ data }) => {
         </button>
       </div>
       
-      <SummaryCards data={data} />
+      {/* 🌟 5. SummaryCards 에도 내가 가져온 summaryData를 넘겨줍니다! */}
+      <SummaryCards data={summaryData} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '1rem' }}>
         <div style={chartCardStyle}>

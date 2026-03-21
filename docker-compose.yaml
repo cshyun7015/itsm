@@ -1,10 +1,20 @@
-version: '3.8'
-
 services:
   # 1. Database (MariaDB)
   itsm-db:
     image: mariadb:10.11 # ARM64 네이티브 지원
     container_name: itsm-mariadb
+    # 🌟 메모리 압박 경고가 있어도 시스템이 강제로 컨테이너를 죽이지 않도록 제한 설정
+    deploy:
+      resources:
+        limits:
+          memory: 1G  # Mac mini 메모리 상황에 맞게 조절 (예: 512M ~ 2G)
+        reservations:
+          memory: 256M
+    # 🌟 아래 command 설정을 추가해 주세요!
+    command:
+      - --innodb-use-native-aio=0  # 이전 io_uring 경고 해결용
+      - --innodb_buffer_pool_size=256M # 실제 할당 메모리의 50~70% 권장
+      - --binlog-expire-logs-seconds=0  # 🌟 로그 만료 설정을 꺼서 경고 제거
     environment:
       MYSQL_ROOT_PASSWORD: root_password
       MYSQL_DATABASE: itsm_db
@@ -12,6 +22,11 @@ services:
       MYSQL_PASSWORD: itsm_password
     ports:
       - "3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     volumes:
       - itsm-db-data:/var/lib/mysql
     networks:
@@ -29,8 +44,16 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mariadb://itsm-db:3306/itsm_db
       - SPRING_DATASOURCE_USERNAME=itsm_user
       - SPRING_DATASOURCE_PASSWORD=itsm_password
+    healthcheck:
+      # Spring Boot Actuator가 없다면 "curl -f http://localhost:8080/api/auth/login || exit 1" 등으로 대체 가능합니다.
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s    # 10초마다 체크
+      timeout: 5s     # 5초 안에 응답 없으면 실패
+      retries: 10     # 애플리케이션이 뜨는 시간이 있으므로 넉넉하게 재시도
+      start_period: 20s # 초기 구동 시간 동안은 실패해도 카운트하지 않음
     depends_on:
-      - itsm-db
+      itsm-db:
+        condition: service_healthy # DB가 건강할 때 백엔드 시작
     networks:
       - itsm-network
 
@@ -45,7 +68,8 @@ services:
     environment:
       - REACT_APP_API_BASE_URL=http://localhost:8080
     depends_on:
-      - itsm-backend
+      itsm-backend:
+        condition: service_healthy # 🌟 백엔드가 Healthcheck 통과 시 프론트 시작
     networks:
       - itsm-network
 

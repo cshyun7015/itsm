@@ -3,6 +3,8 @@ package com.itsm.backend.service;
 import com.itsm.backend.domain.*;
 import com.itsm.backend.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +13,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import org.springframework.security.crypto.password.PasswordEncoder; // 🌟 추가
 
 @Service
 @RequiredArgsConstructor
@@ -28,10 +32,43 @@ public class SampleDataService {
     private final EventRepository eventRepository;
     private final ProblemRepository problemRepository;
     private final ReleaseRecordRepository releaseRepository;
+    private final PasswordEncoder passwordEncoder; // 🌟 추가
 
+    // 🌟 1. "서버가 완벽하게 다 켜지고 준비 완료되면(ApplicationReadyEvent) 그때 실행해!" 라고 타이밍을 늦춥니다.
+    @EventListener(ApplicationReadyEvent.class)
+    // 🌟 2. "DB에 데이터 넣다가 중간에 에러 나면 롤백해줘!" 라고 안전장치를 겁니다.
     @Transactional
     public void generateDummyData() {
         Random random = new Random();
+
+        // 🌟 0. 테스트용 사용자 계정 3개 생성 (비밀번호는 모두 '1234')
+        if (userRepository.findByUsername("admin").isEmpty()) {
+            String encodedPassword = passwordEncoder.encode("1234"); // 비밀번호 암호화
+
+            User admin = new User();
+            admin.setUsername("admin");
+            admin.setPassword(encodedPassword);
+            admin.setName("시스템 관리자");
+            admin.setDepartment("IT 인프라팀");
+            admin.setRole(Role.ROLE_ADMIN);
+            userRepository.save(admin);
+
+            User agent = new User();
+            agent.setUsername("agent");
+            agent.setPassword(encodedPassword);
+            agent.setName("서비스 데스크");
+            agent.setDepartment("IT 지원팀");
+            agent.setRole(Role.ROLE_AGENT);
+            userRepository.save(agent);
+
+            User user = new User();
+            user.setUsername("user");
+            user.setPassword(encodedPassword);
+            user.setName("일반 임직원");
+            user.setDepartment("영업팀");
+            user.setRole(Role.ROLE_USER);
+            userRepository.save(user);
+        }
 
         // 🌟 Enum 값을 읽어 공통 코드(CommonCode) 테이블에 초기 데이터 적재
         if (commonCodeRepository.count() == 0) {
@@ -97,17 +134,19 @@ public class SampleDataService {
         String[] envs = {"PROD", "STAGE", "DEV"};
         List<ConfigurationItem> ciList = new ArrayList<>();
 
-        for (int i = 1; i <= 100; i++) {
-            ConfigurationItem ci = new ConfigurationItem();
-            String type = ciTypes[random.nextInt(ciTypes.length)];
-            ci.setCiName("Asset-" + type + "-" + String.format("%03d", i));
-            ci.setCiType(type);
-            ci.setIpAddress("192.168." + random.nextInt(255) + "." + random.nextInt(255));
-            ci.setEnvironment(envs[random.nextInt(envs.length)]);
-            ci.setOwnerName("담당자" + (i % 10 + 1));
-            ci.setStatus(random.nextDouble() > 0.85 ? "IN_MAINTENANCE" : "ACTIVE");
-            ci.setDescription("자동 생성된 자산 데이터 " + i);
-            ciList.add(ciRepository.save(ci));
+        if (ciRepository.count() == 0) {
+            for (int i = 1; i <= 100; i++) {
+                ConfigurationItem ci = new ConfigurationItem();
+                String type = ciTypes[random.nextInt(ciTypes.length)];
+                ci.setCiName("Asset-" + type + "-" + String.format("%03d", i));
+                ci.setCiType(type);
+                ci.setIpAddress("192.168." + random.nextInt(255) + "." + random.nextInt(255));
+                ci.setEnvironment(envs[random.nextInt(envs.length)]);
+                ci.setOwnerName("담당자" + (i % 10 + 1));
+                ci.setStatus(random.nextDouble() > 0.85 ? "IN_MAINTENANCE" : "ACTIVE");
+                ci.setDescription("자동 생성된 자산 데이터 " + i);
+                ciList.add(ciRepository.save(ci));
+            }
         }
 
         // 🌟 SLA 정책 목록을 미리 불러옵니다.
@@ -119,103 +158,126 @@ public class SampleDataService {
         // 🌟 변수명 충돌을 피하기 위해 이름을 'priorityValues'로 변경!
         Priority[] priorityValues = Priority.values();
 
-        for (int i = 1; i <= 100; i++) {
-            Incident inc = new Incident();
-            inc.setTitle("장애 발생 리포트 - " + i + "번 건");
-            inc.setDescription("시스템 오류 및 응답 지연이 발생했습니다.");
-            inc.setRequesterName("사용자" + (i % 20 + 1));
-            inc.setRequesterId(String.valueOf(1000 + (i % 20 + 1)));
+        if (incidentRepository.count() == 0) {
+            for (int i = 1; i <= 100; i++) {
+                Incident inc = new Incident();
+                inc.setTitle("장애 발생 리포트 - " + i + "번 건");
+                inc.setDescription("시스템 오류 및 응답 지연이 발생했습니다.");
+                inc.setRequesterName("사용자" + (i % 20 + 1));
+                inc.setRequesterId(String.valueOf(1000 + (i % 20 + 1)));
 
-            TicketStatus randomStatus = incStatuses[random.nextInt(incStatuses.length)];
+                TicketStatus randomStatus = incStatuses[random.nextInt(incStatuses.length)];
 
-            // 🌟 에러의 원인 해결! (개별 인시던트의 우선순위를 'randomPriority'라는 이름으로 선언)
-            Priority randomPriority = priorityValues[random.nextInt(priorityValues.length)];
+                // 🌟 에러의 원인 해결! (개별 인시던트의 우선순위를 'randomPriority'라는 이름으로 선언)
+                Priority randomPriority = priorityValues[random.nextInt(priorityValues.length)];
 
-            inc.setStatus(randomStatus);
-            inc.setPriority(randomPriority);
-            inc.setCompany(defaultCompany);
+                inc.setStatus(randomStatus);
+                inc.setPriority(randomPriority);
+                inc.setCompany(defaultCompany);
 
-            // SLA 목표 시간 및 위반(Breach) 계산 로직 (1~5일 전 과거로 세팅)
-            LocalDateTime randomPastDate = LocalDateTime.now()
-                    .minusDays(random.nextInt(5))
-                    .minusHours(random.nextInt(24));
-            inc.setCreatedAt(randomPastDate);
+                // SLA 목표 시간 및 위반(Breach) 계산 로직 (1~5일 전 과거로 세팅)
+                LocalDateTime randomPastDate = LocalDateTime.now()
+                        .minusDays(random.nextInt(5))
+                        .minusHours(random.nextInt(24));
+                inc.setCreatedAt(randomPastDate);
 
-            // 해당 우선순위에 맞는 SLA 정책 찾기
-            SlaPolicy matchingPolicy = slaPolicies.stream()
-                    .filter(p -> "INCIDENT".equals(p.getTargetType()) && p.getPriority().equals(randomPriority.name()))
-                    .findFirst()
-                    .orElse(null);
+                // 해당 우선순위에 맞는 SLA 정책 찾기
+                SlaPolicy matchingPolicy = slaPolicies.stream()
+                        .filter(p -> "INCIDENT".equals(p.getTargetType()) && p.getPriority().equals(randomPriority.name()))
+                        .findFirst()
+                        .orElse(null);
 
-            if (matchingPolicy != null) {
-                // 목표 해결 일시 = 생성일시 + SLA 정책의 목표 시간
-                LocalDateTime targetTime = randomPastDate.plusHours(matchingPolicy.getTargetResolutionHours());
-                inc.setTargetResolutionTime(targetTime);
+                if (matchingPolicy != null) {
+                    // 목표 해결 일시 = 생성일시 + SLA 정책의 목표 시간
+                    LocalDateTime targetTime = randomPastDate.plusHours(matchingPolicy.getTargetResolutionHours());
+                    inc.setTargetResolutionTime(targetTime);
 
-                // 현재 시간이 목표 시간을 지났다면 SLA 위반! (조건식의 결과 boolean을 바로 대입)
-                inc.setSlaBreached(randomStatus != TicketStatus.RESOLVED && LocalDateTime.now().isAfter(targetTime));
+                    // 현재 시간이 목표 시간을 지났다면 SLA 위반! (조건식의 결과 boolean을 바로 대입)
+                    inc.setSlaBreached(randomStatus != TicketStatus.RESOLVED && LocalDateTime.now().isAfter(targetTime));
+                }
+
+                // 자산 연결
+                ConfigurationItem randomCi = ciList.get(random.nextInt(ciList.size()));
+                inc.setCiId(randomCi.getId());
+                inc.setCiName(randomCi.getCiName());
+
+                incidentRepository.save(inc);
             }
-
-            // 자산 연결
-            ConfigurationItem randomCi = ciList.get(random.nextInt(ciList.size()));
-            inc.setCiId(randomCi.getId());
-            inc.setCiName(randomCi.getCiName());
-
-            incidentRepository.save(inc);
         }
         // 5. Service Request (서비스 요청) 100개 생성
         String[] srStatuses = {"PENDING", "APPROVED", "REJECTED"};
-        for (int i = 1; i <= 100; i++) {
-            ServiceRequest sr = new ServiceRequest();
-            sr.setTitle("신규 서비스 및 권한 신청 - " + i);
-            sr.setDescription("자동 생성된 서비스 요청 데이터입니다.");
-            sr.setRequesterName("요청자" + (i % 15 + 1));
+        if (requestRepository.count() == 0) {
+            for (int i = 1; i <= 100; i++) {
+                ServiceRequest sr = new ServiceRequest();
+                sr.setTitle("신규 서비스 및 권한 신청 - " + i);
+                sr.setDescription("자동 생성된 서비스 요청 데이터입니다.");
+                sr.setRequesterName("요청자" + (i % 15 + 1));
 
-            // 🌟 추가된 부분: 고객사와 요청자 ID 세팅
-            sr.setCompany(defaultCompany);
-            sr.setRequesterId(String.valueOf(1000 + (i % 15 + 1)));
+                // 🌟 추가된 부분: 고객사와 요청자 ID 세팅
+                sr.setCompany(defaultCompany);
+                sr.setRequesterId(String.valueOf(1000 + (i % 15 + 1)));
 
-            sr.setApprovalStatus(srStatuses[random.nextInt(srStatuses.length)]);
-            sr.setTargetDeliveryDate(LocalDate.now().plusDays(random.nextInt(14)));
+                sr.setApprovalStatus(srStatuses[random.nextInt(srStatuses.length)]);
+                sr.setTargetDeliveryDate(LocalDate.now().plusDays(random.nextInt(14)));
 
-            // 🌟 에러 해결의 핵심: 필수 필드인 Catalog 설정
-            sr.setCatalog(catalogList.get(random.nextInt(catalogList.size())));
+                // 🌟 에러 해결의 핵심: 필수 필드인 Catalog 설정
+                sr.setCatalog(catalogList.get(random.nextInt(catalogList.size())));
 
-            requestRepository.save(sr);
+                requestRepository.save(sr);
+            }
         }
 
         // 6. Change Request (변경 관리) 100개 생성
         String[] crStatuses = {"CAB_APPROVAL", "SCHEDULED", "COMPLETED", "REJECTED"};
         String[] riskLevels = {"LOW", "MEDIUM", "HIGH"};
-        for (int i = 1; i <= 100; i++) {
-            ChangeRequest cr = new ChangeRequest();
-            cr.setTitle("시스템 정기/수시 변경 작업 - " + i);
-            cr.setReason("보안 패치 및 성능 개선");
-            cr.setRiskLevel(riskLevels[random.nextInt(riskLevels.length)]);
-            cr.setPlan("1. 사전 백업 2. 패치 3. 검증");
-            cr.setBackoutPlan("LVM 스냅샷 롤백");
-            cr.setRequesterName("엔지니어" + (i % 5 + 1));
+        if (changeRepository.count() == 0) {
+            for (int i = 1; i <= 100; i++) {
+                ChangeRequest cr = new ChangeRequest();
+                cr.setTitle("시스템 정기/수시 변경 작업 - " + i);
+                cr.setReason("보안 패치 및 성능 개선");
+                cr.setRiskLevel(riskLevels[random.nextInt(riskLevels.length)]);
+                cr.setPlan("1. 사전 백업 2. 패치 3. 검증");
+                cr.setBackoutPlan("LVM 스냅샷 롤백");
+                cr.setRequesterName("엔지니어" + (i % 5 + 1));
 
-            // 🌟 추가된 부분: 혹시 몰라서 ChangeRequest에도 미리 넣어둡니다! (에러 사전 방지)
-            //cr.setCompany(defaultCompany);
-            //cr.setRequesterId(String.valueOf(1000 + (i % 5 + 1)));
+                // 🌟 추가된 부분: 혹시 몰라서 ChangeRequest에도 미리 넣어둡니다! (에러 사전 방지)
+                //cr.setCompany(defaultCompany);
+                //cr.setRequesterId(String.valueOf(1000 + (i % 5 + 1)));
 
-            cr.setStatus(crStatuses[random.nextInt(crStatuses.length)]);
-            cr.setScheduledAt(LocalDateTime.now().plusDays(random.nextInt(30)));
-            changeRepository.save(cr);
+                cr.setStatus(crStatuses[random.nextInt(crStatuses.length)]);
+                cr.setScheduledAt(LocalDateTime.now().plusDays(random.nextInt(30)));
+                changeRepository.save(cr);
+            }
         }
 
         // 🌟 사용자(User) 100명 생성
         if (userRepository.count() == 0) {
-            String[] depts = {"IT기획팀", "인프라운영팀", "보안팀", "영업1팀", "경영지원팀"};
-            String[] roles = {"ADMIN", "ENGINEER", "USER"};
+            String[] departments = {"IT기획팀", "인프라운영팀", "보안팀", "영업1팀", "경영지원팀"};
+
+            // 🌟 수정 1: String 배열 대신 방금 만든 Role Enum 배열을 사용합니다! (ENGINEER 대신 AGENT 사용)
+            Role[] roles = {Role.ROLE_ADMIN, Role.ROLE_AGENT, Role.ROLE_USER};
+
+            // 🌟 수정 2: 100명 모두가 공통으로 쓸 비밀번호 '1234'를 미리 암호화해 둡니다.
+            String encodedPassword = passwordEncoder.encode("1234");
+
             for (int i = 1; i <= 100; i++) {
                 User u = new User();
-                u.setLoginId("user_" + String.format("%03d", i));
+
+                // 🚨 주의: 이전에 Spring Security 세팅 시 로그인 아이디 필드를 'username'으로 정했습니다!
+                // 만약 엔티티에 loginId를 그대로 쓰신다면 username으로 통일해 주시는 것이 설정상 훨씬 편합니다.
+                u.setUsername("user_" + String.format("%03d", i));
+
+                u.setPassword(encodedPassword); // 암호화된 비밀번호 필수 삽입!
+
                 u.setName("사용자" + i);
-                u.setDepartment(depts[random.nextInt(depts.length)]);
+                u.setDepartment(departments[random.nextInt(departments.length)]);
+
+                // 🌟 수정 3: Enum 배열에서 랜덤으로 뽑아서 바로 세팅! (이제 타입 에러가 나지 않습니다)
                 u.setRole(roles[random.nextInt(roles.length)]);
-                u.setStatus(random.nextDouble() > 0.9 ? "INACTIVE" : "ACTIVE"); // 10%는 정지 계정
+
+                // (참고: User 엔티티에 status 필드가 있다면 아래 줄 유지, 없다면 지워주세요)
+                u.setStatus(random.nextDouble() > 0.9 ? "INACTIVE" : "ACTIVE");
+
                 userRepository.save(u);
             }
         }

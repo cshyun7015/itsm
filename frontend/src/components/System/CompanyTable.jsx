@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api';
 
 const CompanyTable = () => {
   const [data, setData] = useState([]);
@@ -6,7 +7,7 @@ const CompanyTable = () => {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/system/companies')
+    apiFetch('/system/companies') // 🌟 fetch -> apiFetch
       .then(res => res.json())
       .then(setData)
       .catch(err => console.error('고객사 데이터 로드 실패:', err));

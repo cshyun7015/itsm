@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api';
 
 const CodeTable = () => {
   const [data, setData] = useState([]);
@@ -9,7 +10,7 @@ const CodeTable = () => {
 
   // 컴포넌트 마운트 시 공통 코드 API 호출
   useEffect(() => {
-    fetch('http://localhost:8080/api/system/codes')
+    apiFetch('/system/codes') // 🌟 fetch -> apiFetch
       .then(res => res.json())
       .then(fetchedData => setData(fetchedData))
       .catch(err => console.error('공통 코드 로드 실패:', err));

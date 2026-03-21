@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiFetch } from '../../utils/api'; // 🌟 상단에 임포트 추가!
 
 const CMDBRegistrationModal = ({ onClose, onRefresh }) => {
   const [formData, setFormData] = useState({
@@ -12,14 +13,15 @@ const CMDBRegistrationModal = ({ onClose, onRefresh }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    fetch('http://localhost:8080/api/cmdb', {
+    // 🌟 일반 fetch 대신 apiFetch를 사용합니다.
+    apiFetch('/cmdb', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData),
     }).then(res => {
       if (res.ok) {
         alert('신규 IT 자산(CI)이 성공적으로 등록되었습니다.');
-        onRefresh();
+        onRefresh(); // App.jsx의 refreshAll이 실행되어 목록을 갱신합니다.
         onClose();
       }
     });

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api';
 
 const UserTable = () => {
   const [data, setData] = useState([]);
@@ -6,8 +7,12 @@ const UserTable = () => {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/system/users')
-      .then(res => res.json())
+    // 🌟 2. fetch 대신 apiFetch를 사용하고 URL 앞부분(/api)을 생략합니다.
+    apiFetch('/system/users')
+      .then(res => {
+        if (!res.ok) throw new Error('사용자 로드 실패');
+        return res.json();
+      })
       .then(setData)
       .catch(err => console.error('사용자 데이터 로드 실패:', err));
   }, []);

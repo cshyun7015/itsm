@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../utils/api';
 
 const SlaPolicyTable = () => {
   const [data, setData] = useState([]);
@@ -6,8 +7,12 @@ const SlaPolicyTable = () => {
   const itemsPerPage = 10;
 
   useEffect(() => {
-    fetch('http://localhost:8080/api/slm/policies')
-      .then(res => res.json())
+    // 🌟 2. fetch 대신 apiFetch를 사용하고 주소를 간결하게 줄입니다!
+    apiFetch('/slm/policies')
+      .then(res => {
+        if (!res.ok) throw new Error('SLA 정책 로드 실패');
+        return res.json();
+      })
       .then(setData)
       .catch(err => console.error('SLA 정책 데이터 로드 실패:', err));
   }, []);

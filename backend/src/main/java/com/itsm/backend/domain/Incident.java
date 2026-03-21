@@ -27,6 +27,8 @@ public class Incident extends BaseTicket {
 
     // 🌟 SLA 관련 필드 추가
     private LocalDateTime targetResolutionTime; // 목표 해결 일시
+
+    @Builder.Default // 🌟 롬복에게 기본값임을 명시합니다!
     private Boolean slaBreached = false;        // SLA 기한 초과 여부
 
     // 🌟 추가되는 필드: 장애가 발생한 구성 항목(CI) 정보

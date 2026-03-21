@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { apiFetch } from '../../utils/api';
 
 const ChangeRequestModal = ({ onClose, onRefresh }) => {
   const [formData, setFormData] = useState({
@@ -13,14 +14,13 @@ const ChangeRequestModal = ({ onClose, onRefresh }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // 날짜 포맷 맞추기 (백엔드가 LocalDateTime을 받을 수 있도록 'T00:00:00' 추가)
     const payload = { ...formData };
     if (payload.scheduledAt) {
       payload.scheduledAt = `${payload.scheduledAt}T00:00:00`;
     }
 
-    fetch('http://localhost:8080/api/changes', {
+    // 🌟 쌩 fetch 대신 apiFetch 사용 (주소도 짧게!)
+    apiFetch('/changes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
