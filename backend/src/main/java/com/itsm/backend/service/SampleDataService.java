@@ -26,6 +26,7 @@ public class SampleDataService {
     private final UserRepository userRepository;
     private final SlaPolicyRepository slaPolicyRepository;
     private final EventRepository eventRepository;
+    private final ProblemRepository problemRepository;
 
     @Transactional
     public void generateDummyData() {
@@ -274,6 +275,39 @@ public class SampleDataService {
                 }
 
                 eventRepository.save(ev);
+            }
+        }
+
+        // 🌟 Problem (문제 관리) 30개 생성
+        if (problemRepository.count() == 0) {
+            String[] probStatuses = {"OPEN", "INVESTIGATING", "KNOWN_ERROR", "RESOLVED"};
+            String[] titles = {
+                    "결제 시스템 간헐적 타임아웃 현상",
+                    "특정 시간대 DB CPU 100% 스파이크 현상",
+                    "웹 서버 메모리 누수(Memory Leak) 의심",
+                    "사내망 VPN 연결 불안정 현상"
+            };
+
+            for (int i = 1; i <= 30; i++) {
+                Problem prob = new Problem();
+                prob.setTitle(titles[random.nextInt(titles.length)] + " - #" + i);
+                prob.setDescription("해당 현상이 여러 차례의 장애(Incident)로 접수되어 근본 원인 분석을 시작합니다.");
+                prob.setStatus(probStatuses[random.nextInt(probStatuses.length)]);
+                prob.setPriority(Priority.values()[random.nextInt(Priority.values().length)].name());
+
+                prob.setManagerName("문제관리자" + (i % 5 + 1));
+                prob.setCompany(defaultCompany);
+
+                // 상태가 KNOWN_ERROR나 RESOLVED인 경우 임시 해결책이나 근본 원인이 발견되었다고 가정
+                if ("KNOWN_ERROR".equals(prob.getStatus()) || "RESOLVED".equals(prob.getStatus())) {
+                    prob.setRootCause("특정 쿼리의 인덱스 누락으로 인한 Full Table Scan이 원인으로 파악됨.");
+                    prob.setWorkaround("서비스 데스크 담당자는 장애 발생 시 DB 세션을 강제 킬(Kill) 처리 후 재시작 바랍니다.");
+                }
+
+                prob.setCreatedAt(LocalDateTime.now().minusDays(random.nextInt(30)));
+                prob.setTargetResolutionDate(LocalDateTime.now().plusDays(random.nextInt(60)));
+
+                problemRepository.save(prob);
             }
         }
     }

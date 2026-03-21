@@ -20,6 +20,7 @@ import ChangeDetailModal from './components/Change/ChangeDetailModal';
 
 import SlaPolicyTable from './components/SLM/SlaPolicyTable';
 import EventConsole from './components/Event/EventConsole';
+import ProblemTable from './components/Problem/ProblemTable';
 
 import './App.css';
 
@@ -84,6 +85,12 @@ function App() {
 
         <button className={`nav-tab ${currentTab === 'SERVICE_REQUEST' ? 'active' : ''}`} onClick={() => setCurrentTab('SERVICE_REQUEST')}>서비스 요청</button>
         <button className={`nav-tab ${currentTab === 'INCIDENT' ? 'active' : ''}`} onClick={() => setCurrentTab('INCIDENT')}>장애 관리</button>
+        
+        {/* 🌟 새로 추가된 문제 관리 탭 (장애와 변경 사이) */}
+        <button className={`nav-tab ${currentTab === 'PROBLEM' ? 'active' : ''}`} onClick={() => setCurrentTab('PROBLEM')}>
+          🧩 문제 관리
+        </button>
+        
         <button className={`nav-tab ${currentTab === 'CHANGE' ? 'active' : ''}`} onClick={() => setCurrentTab('CHANGE')}>변경 관리</button>
         <button className={`nav-tab ${currentTab === 'CMDB' ? 'active' : ''}`} onClick={() => setCurrentTab('CMDB')}>자산/CMDB</button>
         
@@ -132,6 +139,11 @@ function App() {
             </div>
             <IncidentTable data={incidents} onRowClick={setSelectedTicket} />
           </>
+        )}
+
+        {/* 🌟 문제 관리 컨텐츠 렌더링 */}
+        {currentTab === 'PROBLEM' && (
+          <ProblemTable />
         )}
 
         {currentTab === 'CHANGE' && (
