@@ -1,0 +1,7 @@
+.vagrant/
+db_data/
+backend/build/
+backend/.gradle/
+backend/.idea/
+.env
+node_modules/

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # 1. Database (MariaDB)
+  itsm-db:
+    image: mariadb:10.11 # ARM64 네이티브 지원
+    container_name: itsm-mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: itsm_db
+      MYSQL_USER: itsm_user
+      MYSQL_PASSWORD: itsm_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - itsm-db-data:/var/lib/mysql
+    networks:
+      - itsm-network
+
+  # 2. Backend (Spring Boot)
+  itsm-backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: itsm-spring-boot
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mariadb://itsm-db:3306/itsm_db
+      - SPRING_DATASOURCE_USERNAME=itsm_user
+      - SPRING_DATASOURCE_PASSWORD=itsm_password
+    depends_on:
+      - itsm-db
+    networks:
+      - itsm-network
+
+  # 3. Frontend (React)
+  itsm-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: itsm-react
+    ports:
+      - "3000:5173"
+    environment:
+      - REACT_APP_API_BASE_URL=http://localhost:8080
+    depends_on:
+      - itsm-backend
+    networks:
+      - itsm-network
+
+networks:
+  itsm-network:
+    driver: bridge
+
+volumes:
+  itsm-db-data:

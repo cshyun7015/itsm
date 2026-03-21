@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: itsm-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mariadb://itsm-db:3306/itsm_db}
+    username: ${SPRING_DATASOURCE_USERNAME:itsm_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:itsm_password}
+    driver-class-name: org.mariadb.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
