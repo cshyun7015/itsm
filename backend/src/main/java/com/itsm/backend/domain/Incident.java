@@ -25,6 +25,10 @@ public class Incident extends BaseTicket {
     @Column(name = "root_cause", length = 500)
     private String rootCause; // 장애 근본 원인
 
+    // 🌟 추가되는 필드: 장애가 발생한 구성 항목(CI) 정보
+    private Long ciId;
+    private String ciName;
+
     @Column(name = "restored_at")
     private LocalDateTime restoredAt; // 실제 서비스가 복구된 시간
 }

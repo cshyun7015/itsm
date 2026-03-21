@@ -6,6 +6,7 @@ import CatalogGrid from './components/Catalog/CatalogGrid';
 import ServiceRequestTable from './components/Catalog/ServiceRequestTable';
 import ChangeRequestTable from './components/Change/ChangeRequestTable';
 import CMDBTable from './components/CMDB/CMDBTable'; // 🌟 CMDB 추가
+import CMDBRegistrationModal from './components/CMDB/CMDBRegistrationModal'; // 🌟 추가
 import IncidentRegistrationModal from './components/Incident/IncidentRegistrationModal';
 import IncidentDetailModal from './components/Incident/IncidentDetailModal';
 import ServiceRequestDetailModal from './components/Catalog/ServiceRequestDetailModal';
@@ -26,6 +27,7 @@ function App() {
   const [serviceRequests, setServiceRequests] = useState([]);
   const [changeRequests, setChangeRequests] = useState([]);
   const [cmdbItems, setCmdbItems] = useState([]); // 🌟 CMDB 데이터 상태
+  const [isCmdbModalOpen, setCmdbModalOpen] = useState(false); // 🌟 추가
   
   const [isRegModalOpen, setRegModalOpen] = useState(false);
   const [isChangeModalOpen, setChangeModalOpen] = useState(false); 
@@ -109,11 +111,13 @@ function App() {
         )}
 
         {/* 🌟 5. CMDB 탭 컨텐츠 */}
+        {/* --- CMDB 탭 컨텐츠 --- */}
         {currentTab === 'CMDB' && (
           <>
             <div className="action-bar">
               <h3 style={{ margin: 0, color: 'var(--text-main)' }}>IT 자산 구성 데이터베이스 (CMDB)</h3>
-              <button className="btn btn-primary" onClick={() => alert('자산 등록 모달 구현 예정')}>+ 신규 CI 등록</button>
+              {/* 🌟 alert 삭제하고 모달 열기 상태로 변경 */}
+              <button className="btn btn-primary" onClick={() => setCmdbModalOpen(true)}>+ 신규 CI 등록</button>
             </div>
             <CMDBTable data={cmdbItems} />
           </>
@@ -126,6 +130,8 @@ function App() {
       {selectedRequest && <ServiceRequestDetailModal request={selectedRequest} onClose={() => setSelectedRequest(null)} onRefresh={refreshAll} />}
       {isChangeModalOpen && <ChangeRequestModal onClose={() => setChangeModalOpen(false)} onRefresh={refreshAll} />}
       {selectedChange && <ChangeDetailModal request={selectedChange} onClose={() => setSelectedChange(null)} onRefresh={refreshAll} />}
+      {/* 🌟 CMDB 등록 모달 렌더링 */}
+      {isCmdbModalOpen && <CMDBRegistrationModal onClose={() => setCmdbModalOpen(false)} onRefresh={refreshAll} />}
     </div>
   );
 }
