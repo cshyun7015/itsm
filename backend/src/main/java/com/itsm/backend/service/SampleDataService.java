@@ -22,10 +22,48 @@ public class SampleDataService {
     private final ChangeRequestRepository changeRepository;
     private final CompanyRepository companyRepository;
     private final ServiceCatalogRepository serviceCatalogRepository;
+    private final CommonCodeRepository commonCodeRepository; // 🌟 추가
+    private final UserRepository userRepository;
 
     @Transactional
     public void generateDummyData() {
         Random random = new Random();
+
+        // 🌟 Enum 값을 읽어 공통 코드(CommonCode) 테이블에 초기 데이터 적재
+        if (commonCodeRepository.count() == 0) {
+            // 1. Priority Enum 처리
+            for (Priority p : Priority.values()) {
+                CommonCode code = new CommonCode();
+                code.setGroupCode("PRIORITY");
+                code.setCodeValue(p.name());
+                // Enum 값에 따라 한글 이름 매핑
+                code.setCodeName(p == Priority.CRITICAL ? "긴급" : p == Priority.HIGH ? "높음" : p == Priority.MEDIUM ? "보통" : "낮음");
+                code.setDescription("시스템 우선순위 코드");
+                commonCodeRepository.save(code);
+            }
+
+            // 2. TicketStatus Enum 처리
+            for (TicketStatus ts : TicketStatus.values()) {
+                CommonCode code = new CommonCode();
+                code.setGroupCode("TICKET_STATUS");
+                code.setCodeValue(ts.name());
+                code.setCodeName(ts == TicketStatus.OPEN ? "접수/대기" : ts == TicketStatus.IN_PROGRESS ? "처리 중" : "완료");
+                code.setDescription("인시던트 진행 상태 코드");
+                commonCodeRepository.save(code);
+            }
+
+            // 3. 자산 분류(CI_TYPE) 수동 추가
+            String[] ciTypes = {"SERVER", "DATABASE", "NETWORK", "SOFTWARE"};
+            String[] ciNames = {"서버", "데이터베이스", "네트워크 장비", "소프트웨어"};
+            for (int i = 0; i < ciTypes.length; i++) {
+                CommonCode code = new CommonCode();
+                code.setGroupCode("CI_TYPE");
+                code.setCodeValue(ciTypes[i]);
+                code.setCodeName(ciNames[i]);
+                code.setDescription("IT 자산 분류 코드");
+                commonCodeRepository.save(code);
+            }
+        }
 
         // 1. 기본 고객사(Company) 생성 또는 조회
         Company defaultCompany = companyRepository.findById(1L)
@@ -129,6 +167,33 @@ public class SampleDataService {
             cr.setStatus(crStatuses[random.nextInt(crStatuses.length)]);
             cr.setScheduledAt(LocalDateTime.now().plusDays(random.nextInt(30)));
             changeRepository.save(cr);
+        }
+
+        // 🌟 사용자(User) 100명 생성
+        if (userRepository.count() == 0) {
+            String[] depts = {"IT기획팀", "인프라운영팀", "보안팀", "영업1팀", "경영지원팀"};
+            String[] roles = {"ADMIN", "ENGINEER", "USER"};
+            for (int i = 1; i <= 100; i++) {
+                User u = new User();
+                u.setLoginId("user_" + String.format("%03d", i));
+                u.setName("사용자" + i);
+                u.setDepartment(depts[random.nextInt(depts.length)]);
+                u.setRole(roles[random.nextInt(roles.length)]);
+                u.setStatus(random.nextDouble() > 0.9 ? "INACTIVE" : "ACTIVE"); // 10%는 정지 계정
+                userRepository.save(u);
+            }
+        }
+
+        // 🌟 고객사(Company) 추가 생성 (기존 기본 고객사 1개 외에 페이징 테스트를 위해 50개 추가)
+        if (companyRepository.count() <= 1) {
+            String[] locations = {"서울시 강남구", "경기도 판교", "부산시 해운대구", "대전시 유성구"};
+            for (int i = 1; i <= 50; i++) {
+                Company c = new Company();
+                c.setName("파트너스 " + i + "호");
+                c.setAddress(locations[random.nextInt(locations.length)] + " " + i + "번길");
+                // 엔티티에 manager나 contact 필드가 있다면 세팅해주시고, 없다면 제외하세요.
+                companyRepository.save(c);
+            }
         }
     }
 }

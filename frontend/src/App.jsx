@@ -7,6 +7,11 @@ import ServiceRequestTable from './components/Catalog/ServiceRequestTable';
 import ChangeRequestTable from './components/Change/ChangeRequestTable';
 import CMDBTable from './components/CMDB/CMDBTable'; // 🌟 CMDB 추가
 import CMDBRegistrationModal from './components/CMDB/CMDBRegistrationModal'; // 🌟 추가
+// 🌟 새로 추가된 시스템 관리 컴포넌트 임포트
+import UserTable from './components/System/UserTable';
+import CompanyTable from './components/System/CompanyTable';
+import CodeTable from './components/System/CodeTable';
+
 import IncidentRegistrationModal from './components/Incident/IncidentRegistrationModal';
 import IncidentDetailModal from './components/Incident/IncidentDetailModal';
 import ServiceRequestDetailModal from './components/Catalog/ServiceRequestDetailModal';
@@ -18,6 +23,9 @@ function App() {
   const [currentTab, setCurrentTab] = useState('DASHBOARD'); 
   const [serviceSubTab, setServiceSubTab] = useState('CATALOG');
   const [dashboardData, setDashboardData] = useState(null);
+
+  // 🌟 시스템 관리 하위 탭 상태 (기본값: 사용자 관리)
+  const [systemSubTab, setSystemSubTab] = useState('USER');
 
   const { incidents, fetchIncidents } = useIncidents();
   const [searchType, setSearchType] = useState('requester');
@@ -68,6 +76,12 @@ function App() {
         <button className={`nav-tab ${currentTab === 'INCIDENT' ? 'active' : ''}`} onClick={() => setCurrentTab('INCIDENT')}>장애 관리</button>
         <button className={`nav-tab ${currentTab === 'CHANGE' ? 'active' : ''}`} onClick={() => setCurrentTab('CHANGE')}>변경 관리</button>
         <button className={`nav-tab ${currentTab === 'CMDB' ? 'active' : ''}`} onClick={() => setCurrentTab('CMDB')}>자산/CMDB</button>
+        
+        {/* 🌟 시스템 관리 탭 추가 */}
+        <button className={`nav-tab ${currentTab === 'SYSTEM' ? 'active' : ''}`} onClick={() => setCurrentTab('SYSTEM')} style={{ marginLeft: 'auto', color: currentTab === 'SYSTEM' ? 'var(--primary)' : '#475569' }}>
+          ⚙️ 시스템 관리
+        </button>
+      
       </nav>
 
       <main className="content-area">
@@ -120,6 +134,22 @@ function App() {
               <button className="btn btn-primary" onClick={() => setCmdbModalOpen(true)}>+ 신규 CI 등록</button>
             </div>
             <CMDBTable data={cmdbItems} />
+          </>
+        )}
+
+        {/* 🌟 시스템 관리 탭 컨텐츠 */}
+        {currentTab === 'SYSTEM' && (
+          <>
+            <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
+              <button className={`btn ${systemSubTab === 'USER' ? 'btn-outline active' : 'btn-outline'}`} onClick={() => setSystemSubTab('USER')}>사용자 관리</button>
+              <button className={`btn ${systemSubTab === 'COMPANY' ? 'btn-outline active' : 'btn-outline'}`} onClick={() => setSystemSubTab('COMPANY')}>고객사 관리</button>
+              <button className={`btn ${systemSubTab === 'CODE' ? 'btn-outline active' : 'btn-outline'}`} onClick={() => setSystemSubTab('CODE')}>공통 코드 관리</button>
+            </div>
+            
+            {/* 선택된 하위 탭에 따라 컴포넌트 렌더링 */}
+            {systemSubTab === 'USER' && <UserTable />}
+            {systemSubTab === 'COMPANY' && <CompanyTable />}
+            {systemSubTab === 'CODE' && <CodeTable />}
           </>
         )}
       </main>
