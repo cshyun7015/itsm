@@ -164,7 +164,7 @@ function ChangeRequestTable() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ChangeCircleIcon color="primary" /> 변경 관리 (Change Management)
+          <ChangeCircleIcon color="primary" /> 변경 (Change) 목록
         </Typography>
         
         {canEdit && (

@@ -113,7 +113,7 @@ function EventConsole() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-          🚨 이벤트 관제 (Event Console)
+          🚨 이벤트 (Event) 목록
         </Typography>
         {canEdit && (
           <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleOpenCreate}>

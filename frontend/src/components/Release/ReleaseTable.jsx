@@ -148,7 +148,7 @@ function ReleaseTable() {
       {/* 상단 액션 바 */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <RocketLaunchIcon color="primary" /> 배포 관리 (Release Management)
+          <RocketLaunchIcon color="primary" /> 배포 (Release) 목록
         </Typography>
         
         {canEdit && (

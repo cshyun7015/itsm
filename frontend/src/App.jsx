@@ -191,7 +191,7 @@ function App() {
           <ListItem disablePadding sx={{ mb: 1 }}>
             <ListItemButton selected={currentTab === 'EVENT'} onClick={() => setCurrentTab('EVENT')} sx={{ borderRadius: 2, '&.Mui-selected': { backgroundColor: 'rgba(239, 68, 68, 0.16)' } }}>
               <ListItemIcon sx={{ color: currentTab === 'EVENT' ? '#ef4444' : '#94a3b8' }}><WarningAmberIcon /></ListItemIcon>
-              <ListItemText primary="이벤트 관제" primaryTypographyProps={{ fontWeight: currentTab === 'EVENT' ? 'bold' : 'normal', color: currentTab === 'EVENT' ? '#ef4444' : 'inherit' }} />
+              <ListItemText primary="이벤트 관리" primaryTypographyProps={{ fontWeight: currentTab === 'EVENT' ? 'bold' : 'normal', color: currentTab === 'EVENT' ? '#ef4444' : 'inherit' }} />
             </ListItemButton>
           </ListItem>
 
@@ -239,14 +239,14 @@ function App() {
               <ListItem disablePadding sx={{ mb: 1 }}>
                 <ListItemButton selected={currentTab === 'CMDB'} onClick={() => setCurrentTab('CMDB')} sx={{ borderRadius: 2, '&.Mui-selected': { backgroundColor: 'rgba(96, 165, 250, 0.16)' } }}>
                   <ListItemIcon sx={{ color: currentTab === 'CMDB' ? '#60a5fa' : '#94a3b8' }}><StorageIcon /></ListItemIcon>
-                  <ListItemText primary="자산/CMDB" primaryTypographyProps={{ fontWeight: currentTab === 'CMDB' ? 'bold' : 'normal' }} />
+                  <ListItemText primary="구성 관리" primaryTypographyProps={{ fontWeight: currentTab === 'CMDB' ? 'bold' : 'normal' }} />
                 </ListItemButton>
               </ListItem>
 
               <ListItem disablePadding sx={{ mb: 1 }}>
                 <ListItemButton selected={currentTab === 'SLM'} onClick={() => setCurrentTab('SLM')} sx={{ borderRadius: 2, '&.Mui-selected': { backgroundColor: 'rgba(96, 165, 250, 0.16)' } }}>
                   <ListItemIcon sx={{ color: currentTab === 'SLM' ? '#60a5fa' : '#94a3b8' }}><SpeedIcon /></ListItemIcon>
-                  <ListItemText primary="SLM (서비스 수준)" primaryTypographyProps={{ fontWeight: currentTab === 'SLM' ? 'bold' : 'normal' }} />
+                  <ListItemText primary="서비스 수준 관리" primaryTypographyProps={{ fontWeight: currentTab === 'SLM' ? 'bold' : 'normal' }} />
                 </ListItemButton>
               </ListItem>
             </>
@@ -283,7 +283,7 @@ function App() {
           <>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                📋 서비스 요청 관리 (Service Request)
+                📋 서비스 요청 (Service Request) 목록
               </Typography>
             </Box>
             <ServiceRequestConsole onRowClick={setSelectedRequest} />
@@ -301,7 +301,7 @@ function App() {
           <>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-                🚨 장애 관리 (Incident Management)
+                🚨 장애 (Incident) 목록
               </Typography>
             </Box>
             <IncidentTable />

@@ -16,7 +16,7 @@ function SlmManagement() {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
         <AssuredWorkloadIcon color="primary" fontSize="large" />
         <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
-          SLA 수준 관리 (Service Level Management)
+          SLA (Service Level Agreement)
         </Typography>
       </Box>
 

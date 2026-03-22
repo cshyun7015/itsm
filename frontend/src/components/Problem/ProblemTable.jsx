@@ -131,7 +131,7 @@ function ProblemTable() {
       {/* 상단 액션 바 및 검색 영역 */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ExtensionIcon color="primary" /> 문제 관리 (Problem Management)
+          <ExtensionIcon color="primary" /> 문제 (Problem) 목록
         </Typography>
         
         {canEdit && (

@@ -151,7 +151,7 @@ function CMDBTable() {
       {/* 상단 액션 바 */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
         <Typography variant="h5" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-          <StorageIcon color="primary" /> 구성 항목 관리 (CMDB)
+          <StorageIcon color="primary" /> 구성 항목 (CI) 목록
         </Typography>
         
         {canEdit && (
