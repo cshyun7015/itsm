@@ -5,30 +5,38 @@ import lombok.*;
 
 @Entity
 @Table(name = "service_catalog")
-@Getter
-@Setter
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class ServiceCatalog extends BaseTimeEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, length = 100)
-    private String name; // 카탈로그 명 (예: 사내 메신저 계정 생성)
+    private String name;
 
-    @Column(length = 500)
-    private String description; // 서비스 상세 설명
+    @Column(length = 1000)
+    private String description;
 
     @Column(length = 50)
-    private String category; // 카테고리 (예: SOFTWARE, HARDWARE, ACCESS)
+    private String category;
 
-    @Column(name = "estimated_days")
-    private Integer estimatedDays; // 예상 처리 소요 일수 (SLA 기준)
+    private Integer estimatedDays;
 
-    @Column(name = "is_active")
-    @Builder.Default // 🌟 롬복에게 기본값임을 명시합니다!
-    private Boolean isActive = true; // 서비스 제공 활성화 여부
+    @Builder.Default
+    private Boolean isActive = true;
+
+    // 🌟 추가된 속성들
+    @Builder.Default
+    private Boolean approvalRequired = false; // 기본은 결재 불필요
+
+    private Integer cost;             // 비용
+
+    @Column(length = 50)
+    private String targetAudience;    // 대상자
+
+    @Column(length = 50)
+    private String iconCode;          // 아이콘명 (예: LaptopMac, VpnKey)
 }

@@ -1,8 +1,13 @@
 package com.itsm.backend.service;
 
 import com.itsm.backend.domain.ServiceCatalog;
+import com.itsm.backend.dto.ServiceCatalogDto;
 import com.itsm.backend.repository.ServiceCatalogRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,45 +18,53 @@ import java.util.List;
 public class ServiceCatalogService {
     private final ServiceCatalogRepository catalogRepository;
 
+    // 1. 사용자용 전체 활성 목록 조회 (쇼핑몰 형태)
     @Transactional(readOnly = true)
     public List<ServiceCatalog> getActiveCatalogs() {
-        return catalogRepository.findByIsActiveTrue();
+        return catalogRepository.findByIsActiveTrueOrderByIdDesc();
     }
 
-    // 🌟 관리자용: 모든 카탈로그 조회 (비활성 포함)
+    // 2. 관리자용 페이징 및 다중 검색 조회
     @Transactional(readOnly = true)
-    public List<ServiceCatalog> getAllCatalogs() {
-        return catalogRepository.findAllByOrderByIdDesc();
+    public Page<ServiceCatalog> getCatalogsPaged(int page, int size, String sort, String dir,
+                                                 String category, String name, Boolean isActive) {
+        Sort.Direction direction = Sort.Direction.fromString(dir);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sort));
+        return catalogRepository.searchCatalogs(category, name, isActive, pageable);
     }
 
-    // 🌟 카탈로그 생성
     @Transactional
-    public ServiceCatalog createCatalog(ServiceCatalog catalog) {
-        if (catalog.getIsActive() == null) {
-            catalog.setIsActive(true); // 기본값 활성화
-        }
+    public ServiceCatalog createCatalog(ServiceCatalogDto dto) {
+        ServiceCatalog catalog = new ServiceCatalog();
+        updateEntityFromDto(catalog, dto);
+        if (catalog.getIsActive() == null) catalog.setIsActive(true);
+        if (catalog.getApprovalRequired() == null) catalog.setApprovalRequired(false);
+
         return catalogRepository.save(catalog);
     }
 
-    // 🌟 카탈로그 수정
     @Transactional
-    public ServiceCatalog updateCatalog(Long id, ServiceCatalog updatedCatalog) {
-        return catalogRepository.findById(id).map(catalog -> {
-            catalog.setName(updatedCatalog.getName());
-            catalog.setDescription(updatedCatalog.getDescription());
-            catalog.setCategory(updatedCatalog.getCategory());
-            catalog.setEstimatedDays(updatedCatalog.getEstimatedDays());
-            catalog.setIsActive(updatedCatalog.getIsActive());
-            return catalogRepository.save(catalog);
-        }).orElseThrow(() -> new IllegalArgumentException("카탈로그를 찾을 수 없습니다. ID: " + id));
+    public ServiceCatalog updateCatalog(Long id, ServiceCatalogDto dto) {
+        ServiceCatalog catalog = catalogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 서비스 카탈로그입니다."));
+        updateEntityFromDto(catalog, dto);
+        return catalogRepository.save(catalog);
     }
 
-    // 🌟 카탈로그 삭제
     @Transactional
     public void deleteCatalog(Long id) {
-        if (!catalogRepository.existsById(id)) {
-            throw new IllegalArgumentException("카탈로그를 찾을 수 없습니다. ID: " + id);
-        }
         catalogRepository.deleteById(id);
+    }
+
+    private void updateEntityFromDto(ServiceCatalog entity, ServiceCatalogDto dto) {
+        entity.setName(dto.getName());
+        entity.setDescription(dto.getDescription());
+        entity.setCategory(dto.getCategory());
+        entity.setEstimatedDays(dto.getEstimatedDays());
+        entity.setIsActive(dto.getIsActive());
+        entity.setApprovalRequired(dto.getApprovalRequired());
+        entity.setCost(dto.getCost());
+        entity.setTargetAudience(dto.getTargetAudience());
+        entity.setIconCode(dto.getIconCode());
     }
 }
