@@ -1,90 +1,146 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
+  Paper, Chip, TablePagination, TableSortLabel, Button, IconButton,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel 
+} from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
 import { apiFetch } from '../../utils/api';
 
-const CodeTable = () => {
-  const [data, setData] = useState([]);
-  
-  // 🌟 페이징 상태 관리
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+function CodeTable() {
+  const [codes, setCodes] = useState([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalElements, setTotalElements] = useState(0); 
+  const [orderBy, setOrderBy] = useState('groupCode'); 
+  const [order, setOrder] = useState('asc'); 
 
-  // 컴포넌트 마운트 시 공통 코드 API 호출
-  useEffect(() => {
-    apiFetch('/system/codes') // 🌟 fetch -> apiFetch
-      .then(res => res.json())
-      .then(fetchedData => setData(fetchedData))
-      .catch(err => console.error('공통 코드 로드 실패:', err));
-  }, []);
+  const [searchGroup, setSearchGroup] = useState('');
+  const [searchName, setSearchName] = useState('');
+  const [triggerSearch, setTriggerSearch] = useState(0);
 
-  const totalPages = Math.ceil(data.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentData = data.slice(indexOfFirstItem, indexOfLastItem);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('CREATE');
+  const [formData, setFormData] = useState({ id: null, groupCode: '', codeValue: '', codeName: '', description: '', useYn: 'Y' });
 
-  const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
+  const fetchCodes = () => {
+    const url = `/system/codes?page=${page}&size=${rowsPerPage}&sort=${orderBy}&dir=${order}&groupCode=${searchGroup}&codeName=${searchName}`;
+    apiFetch(url).then(res => res.json())
+      .then(data => { setCodes(data.content || []); setTotalElements(data.totalElements || 0); })
+      .catch(err => console.error(err));
+  };
+
+  useEffect(() => { fetchCodes(); }, [page, rowsPerPage, orderBy, order, triggerSearch]); 
+
+  const handleSort = (property) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc'); setOrderBy(property); setPage(0);
+  };
+
+  const handleOpenCreate = () => {
+    setFormData({ id: null, groupCode: '', codeValue: '', codeName: '', description: '', useYn: 'Y' });
+    setModalMode('CREATE'); setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (code) => {
+    setFormData({ ...code });
+    setModalMode('EDIT'); setIsModalOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!formData.groupCode || !formData.codeValue) return alert('그룹 코드와 코드 값은 필수입니다.');
+    const url = modalMode === 'CREATE' ? '/system/codes' : `/system/codes/${formData.id}`;
+    const method = modalMode === 'CREATE' ? 'POST' : 'PUT';
+
+    try {
+      const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
+      if (res.ok) { setIsModalOpen(false); fetchCodes(); }
+    } catch (error) { console.error(error); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('이 코드를 삭제하시겠습니까?')) return;
+    try {
+      const res = await apiFetch(`/system/codes/${id}`, { method: 'DELETE' });
+      if (res.ok) fetchCodes();
+    } catch (error) { console.error(error); }
+  };
 
   return (
-    <div>
-      <div className="action-bar" style={{ padding: '1rem', marginBottom: '1rem' }}>
-        <h4 style={{ margin: 0, color: 'var(--text-main)' }}>공통 코드(Common Code) 목록</h4>
-        <button className="btn btn-primary" onClick={() => alert('코드 등록 모달 예정')}>+ 신규 코드</button>
-      </div>
-      
-      <div className="table-wrapper">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>그룹 코드</th>
-              <th>코드 값</th>
-              <th>코드 명 (한글)</th>
-              <th>설명</th>
-              <th>사용 여부</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentData.map(code => (
-              <tr key={code.id}>
-                <td>{code.id}</td>
-                <td style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{code.groupCode}</td>
-                <td style={{ fontWeight: '600' }}>{code.codeValue}</td>
-                <td style={{ color: '#059669', fontWeight: 'bold' }}>{code.codeName}</td>
-                <td style={{ color: 'var(--text-muted)' }}>{code.description}</td>
-                <td>
-                  <span style={{ 
-                    padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold',
-                    backgroundColor: code.useYn === 'Y' ? '#dcfce7' : '#fee2e2',
-                    color: code.useYn === 'Y' ? '#166534' : '#ef4444'
-                  }}>
-                    {code.useYn === 'Y' ? '사용 중' : '미사용'}
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {data.length === 0 && (
-              <tr><td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>등록된 공통 코드가 없습니다. 대시보드에서 샘플 데이터를 생성해 주세요.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+    <Box>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center' }}>
+        <TextField size="small" label="그룹 코드 검색" value={searchGroup} onChange={(e) => setSearchGroup(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && setTriggerSearch(prev => prev + 1)} />
+        <TextField size="small" label="코드명(한글) 검색" value={searchName} onChange={(e) => setSearchName(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && setTriggerSearch(prev => prev + 1)} />
+        <Button variant="outlined" onClick={() => setTriggerSearch(prev => prev + 1)}>검색</Button>
+        <Box sx={{ flexGrow: 1 }} />
+        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleOpenCreate}>신규 공통 코드</Button>
+      </Box>
 
-      {/* 🌟 페이지네이션 UI */}
-      {totalPages > 1 && (
-        <div className="pagination-container">
-          <button className="page-btn" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>이전</button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter(page => Math.abs(currentPage - page) <= 2 || page === 1 || page === totalPages)
-            .map((page, index, array) => (
-              <React.Fragment key={page}>
-                {index > 0 && page - array[index - 1] > 1 && <span style={{ color: 'var(--text-muted)' }}>...</span>}
-                <button className={`page-btn ${currentPage === page ? 'active' : ''}`} onClick={() => handlePageChange(page)}>{page}</button>
-              </React.Fragment>
-          ))}
-          <button className="page-btn" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>다음</button>
-        </div>
-      )}
-    </div>
+      <Paper sx={{ boxShadow: 'none', border: '1px solid #e2e8f0' }}>
+        <TableContainer>
+          <Table>
+            <TableHead sx={{ bgcolor: '#f8fafc' }}>
+              <TableRow>
+                <TableCell fontWeight="bold"><TableSortLabel active={orderBy === 'id'} direction={orderBy === 'id' ? order : 'asc'} onClick={() => handleSort('id')}>ID</TableSortLabel></TableCell>
+                <TableCell fontWeight="bold"><TableSortLabel active={orderBy === 'groupCode'} direction={orderBy === 'groupCode' ? order : 'asc'} onClick={() => handleSort('groupCode')}>그룹 코드</TableSortLabel></TableCell>
+                <TableCell fontWeight="bold"><TableSortLabel active={orderBy === 'codeValue'} direction={orderBy === 'codeValue' ? order : 'asc'} onClick={() => handleSort('codeValue')}>코드 값</TableSortLabel></TableCell>
+                <TableCell fontWeight="bold">코드 명 (한글)</TableCell>
+                <TableCell fontWeight="bold">설명</TableCell>
+                <TableCell fontWeight="bold">사용 여부</TableCell>
+                <TableCell align="center" fontWeight="bold">관리</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {codes.map((c) => (
+                <TableRow key={c.id} hover>
+                  <TableCell>{c.id}</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold', color: 'primary.main' }}>{c.groupCode}</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>{c.codeValue}</TableCell>
+                  <TableCell sx={{ color: '#059669', fontWeight: 'bold' }}>{c.codeName}</TableCell>
+                  <TableCell>{c.description}</TableCell>
+                  <TableCell>
+                    <Chip label={c.useYn === 'Y' ? '사용 중' : '미사용'} size="small" color={c.useYn === 'Y' ? 'success' : 'error'} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <IconButton size="small" color="primary" onClick={() => handleOpenEdit(c)}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDelete(c.id)}><DeleteIcon fontSize="small" /></IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination component="div" count={totalElements} page={page} onPageChange={(e, p) => setPage(p)} rowsPerPage={rowsPerPage} onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }} rowsPerPageOptions={[5, 10, 25]} />
+      </Paper>
+
+      <Dialog open={isModalOpen} onClose={() => setIsModalOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 'bold' }}>{modalMode === 'CREATE' ? '신규 공통 코드 등록' : '공통 코드 수정'}</DialogTitle>
+        <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mt: 1 }}>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField label="그룹 코드 (예: PRIORITY)" value={formData.groupCode} onChange={(e) => setFormData({...formData, groupCode: e.target.value})} fullWidth required />
+            <TextField label="코드 값 (예: HIGH)" value={formData.codeValue} onChange={(e) => setFormData({...formData, codeValue: e.target.value})} fullWidth required />
+          </Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField label="코드 명 (한글)" value={formData.codeName} onChange={(e) => setFormData({...formData, codeName: e.target.value})} fullWidth required />
+            <FormControl fullWidth>
+              <InputLabel>사용 여부</InputLabel>
+              <Select value={formData.useYn} onChange={(e) => setFormData({...formData, useYn: e.target.value})} label="사용 여부">
+                <MenuItem value="Y">사용 (Y)</MenuItem>
+                <MenuItem value="N">미사용 (N)</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+          <TextField label="상세 설명" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} fullWidth multiline rows={2} />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setIsModalOpen(false)}>취소</Button>
+          <Button onClick={handleSubmit} variant="contained" color="primary">저장</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
-};
+}
 
 export default CodeTable;

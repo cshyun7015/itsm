@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { apiFetch } from './utils/api';
+
 import Login from './components/Auth/Login';
 
 import Dashboard from './components/Dashboard/Dashboard';
@@ -11,22 +13,24 @@ import ServiceRequestDetailModal from './components/ServiceRequest/ServiceReques
 
 import IncidentTable from './components/Incident/IncidentTable';
 import CMDBTable from './components/CMDB/CMDBTable';
-import CMDBRegistrationModal from './components/CMDB/CMDBRegistrationModal';
-import UserTable from './components/System/UserTable';
-import CompanyTable from './components/System/CompanyTable';
-import CodeTable from './components/System/CodeTable';
+//import CMDBRegistrationModal from './components/CMDB/CMDBRegistrationModal';
+
 import IncidentRegistrationModal from './components/Incident/IncidentRegistrationModal';
 import IncidentDetailModal from './components/Incident/IncidentDetailModal';
+
 import ChangeRequestTable from './components/Change/ChangeRequestTable';
-import ChangeRequestModal from './components/Change/ChangeRequestModal';
-import ChangeDetailModal from './components/Change/ChangeDetailModal';
-import SlaPolicyTable from './components/SLM/SlaPolicyTable';
+
+//import SlaPolicyTable from './components/SLM/SlaPolicyTable';
+import SlmManagement from './components/SLM/SlmManagement';
+
 import EventConsole from './components/Event/EventConsole';
 import ProblemTable from './components/Problem/ProblemTable';
 import ReleaseTable from './components/Release/ReleaseTable';
-import { apiFetch } from './utils/api';
+
+import SystemManagement from './components/System/SystemManagement';
 
 import './App.css';
+import logo from './assets/logo.png';
 
 import { 
   Box, Drawer, AppBar, Toolbar, Typography, Divider, 
@@ -136,7 +140,7 @@ function App() {
       <AppBar position="fixed" sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px`, backgroundColor: '#ffffff', color: '#1e293b', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
         <Toolbar>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 'bold', color: '#1976d2' }}>
-            ITSM Enterprise
+            ITSM v4 (NEXUS)
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -159,7 +163,11 @@ function App() {
         variant="permanent" anchor="left"
       >
         <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 900, letterSpacing: 1, color: '#60a5fa' }}>ITSM PRO</Typography>
+          <img 
+            src={logo} 
+            alt="ITSM PRO Logo" 
+            style={{ height: '90px', width: 'auto' }} // 사이드바 크기에 맞춰 높이(height)를 조절하세요!
+          />
         </Toolbar>
         <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
         
@@ -302,44 +310,15 @@ function App() {
 
         {currentTab === 'PROBLEM' && <ProblemTable />}
 
-        {currentTab === 'CHANGE' && (
-          <>
-            <div className="action-bar" style={{ paddingBottom: '1rem', marginBottom: '1rem', borderBottom: '2px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>🚀 변경 관리 (Change Management)</Typography>
-              <button className="btn btn-primary" onClick={() => setIsChangeModalOpen(true)}>+ 신규 변경 요청</button>
-            </div>
-            <ChangeRequestTable data={changes} onRowClick={setSelectedChange} />
-            {isChangeModalOpen && <ChangeRequestModal onClose={() => setIsChangeModalOpen(false)} onRefresh={fetchChanges} />}
-            {selectedChange && <ChangeDetailModal request={selectedChange} onClose={() => setSelectedChange(null)} onRefresh={fetchChanges} />}
-          </>
-        )}
+        {currentTab === 'CHANGE' && <ChangeRequestTable />} 
 
         {currentTab === 'RELEASE' && <ReleaseTable />}
 
-        {currentTab === 'CMDB' && (
-          <>
-            <div className="action-bar" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>IT 자산 구성 데이터베이스 (CMDB)</Typography>
-              <button className="btn btn-primary" onClick={() => setCmdbModalOpen(true)}>+ 신규 CI 등록</button>
-            </div>
-            <CMDBTable data={cmdbItems} />
-          </>
-        )}
+        {currentTab === 'CMDB' && <CMDBTable />}
 
-        {currentTab === 'SLM' && <SlaPolicyTable />}
+        {currentTab === 'SLM' && <SlmManagement />}
 
-        {currentTab === 'SYSTEM' && (
-          <>
-            <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '0.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
-              <button className={`btn ${systemSubTab === 'USER' ? 'btn-outline active' : 'btn-outline'}`} onClick={() => setSystemSubTab('USER')}>사용자 관리</button>
-              <button className={`btn ${systemSubTab === 'COMPANY' ? 'btn-outline active' : 'btn-outline'}`} onClick={() => setSystemSubTab('COMPANY')}>고객사 관리</button>
-              <button className={`btn ${systemSubTab === 'CODE' ? 'btn-outline active' : 'btn-outline'}`} onClick={() => setSystemSubTab('CODE')}>공통 코드 관리</button>
-            </div>
-            {systemSubTab === 'USER' && <UserTable />}
-            {systemSubTab === 'COMPANY' && <CompanyTable />}
-            {systemSubTab === 'CODE' && <CodeTable />}
-          </>
-        )}
+        {currentTab === 'SYSTEM' && <SystemManagement />}
       </Box>
 
       {/* 모달창들 (화면 위에 덮어씌워짐) */}

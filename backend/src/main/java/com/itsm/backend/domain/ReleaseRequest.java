@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "release_records") // release는 DB 예약어일 수 있으므로 안전하게 변경
 @Getter @Setter
-public class ReleaseRecord {
+public class ReleaseRequest {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 

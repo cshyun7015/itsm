@@ -1,15 +1,18 @@
 package com.itsm.backend.repository;
 
 import com.itsm.backend.domain.Company;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.List;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface CompanyRepository extends JpaRepository<Company, Long> {
-    // 고객사 코드로 정확히 조회하는 메서드
     Optional<Company> findByCode(String code);
 
-    // 고객사 이름이 포함된(Like 검색) 데이터를 찾는 메서드
-    List<Company> findByNameContaining(String name);
+    @Query("SELECT c FROM Company c WHERE " +
+            "(:name IS NULL OR :name = '' OR c.name LIKE %:name%) AND " +
+            "(:code IS NULL OR :code = '' OR c.code LIKE %:code%)")
+    Page<Company> searchCompanies(@Param("name") String name, @Param("code") String code, Pageable pageable);
 }

@@ -12,7 +12,8 @@ COPY src src
 RUN chmod +x ./gradlew
 
 # Spring Boot 실행 가능한 jar 파일 빌드 (-x test로 테스트는 생략하여 속도 향상)
-RUN ./gradlew bootJar -x test
+#RUN ./gradlew bootJar -x test
+RUN ./gradlew bootJar
 
 # 2. Execution Stage (ARM64 최적화 JRE)
 FROM eclipse-temurin:17-jre-jammy
