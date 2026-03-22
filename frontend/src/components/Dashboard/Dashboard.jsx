@@ -10,6 +10,11 @@ const Dashboard = () => {
   // 🌟 2. 요약 데이터를 담을 빈 그릇(상태)을 하나 만들어 줍니다.
   const [summaryData, setSummaryData] = useState({});
 
+  const [responseTime, setResponseTime] = useState(null);
+  const [isPerfWarning, setIsPerfWarning] = useState(false);
+
+  const [serverStatus, setServerStatus] = useState(null); // 'UP' 또는 'DOWN'
+
   const [memoryUsage, setMemoryUsage] = useState(null);
   const [isWarning, setIsWarning] = useState(false); // 🌟 경고 상태를 관리하는 바구니
   // 🌟 용량 임계치(Threshold) 설정: 400MB를 넘으면 위험하다고 판단!
@@ -99,6 +104,59 @@ const Dashboard = () => {
         }
       })
       .catch(err => console.error('용량 지표 로드 실패:', err));
+  };
+
+  // 🌟 서버의 성능(평균 응답 시간)을 측정하는 함수
+const checkServerPerformance = () => {
+  // Actuator의 HTTP 요청 통계 지표를 가져옵니다.
+  fetch('http://localhost:8080/actuator/metrics/http.server.requests')
+    .then(res => res.json())
+    .then(data => {
+      // 1. 총 요청 횟수 (COUNT)
+      const count = data.measurements.find(m => m.statistic === 'COUNT')?.value || 0;
+      // 2. 총 소요 시간 (TOTAL_TIME, 초 단위)
+      const totalTime = data.measurements.find(m => m.statistic === 'TOTAL_TIME')?.value || 0;
+
+      if (count === 0) {
+        alert("아직 서버로 요청된 API가 없습니다. 탭을 몇 번 누른 뒤 다시 시도해 주세요!");
+        return;
+      }
+
+      // 3. 평균 응답 시간 계산 (초 -> 밀리초 변환)
+      const avgTimeMs = ((totalTime / count) * 1000).toFixed(2);
+      console.log(`⚡ 현재 서버 평균 응답 시간: ${avgTimeMs} ms`);
+      setResponseTime(avgTimeMs);
+
+      // 🌟 성능 임계치 설정: 평균 응답이 500ms(0.5초)를 넘어가면 성능 지연으로 판단!
+      if (parseFloat(avgTimeMs) > 500) {
+        setIsPerfWarning(true);
+        // (여기서도 용량 관리 때처럼 Webhook API를 쏴서 이벤트를 발생시킬 수 있습니다!)
+      } else {
+        setIsPerfWarning(false);
+      }
+    })
+    .catch(err => console.error('성능 지표 로드 실패:', err));
+  };
+
+  // 🌟 서버의 가용성(생존 여부)을 확인하는 함수 (Health Check)
+  const checkServerAvailability = () => {
+    // Actuator의 health 엔드포인트를 찔러봅니다.
+    fetch('http://localhost:8080/actuator/health')
+      .then(res => {
+        // 서버가 죽었거나 네트워크가 끊기면 이쪽으로 빠집니다.
+        if (!res.ok) throw new Error('서버 응답 없음');
+        return res.json();
+      })
+      .then(data => {
+        console.log(`💓 현재 서버 상태: ${data.status}`); // 보통 "UP"이 옵니다.
+        setServerStatus(data.status);
+      })
+      .catch(err => {
+        console.error('가용성 체크 실패 - 서버가 죽었습니다!', err);
+        setServerStatus('DOWN'); // 에러가 나면 무조건 DOWN(장애) 처리!
+        
+        // 💡 실제 환경에서는 즉시 EventConsole로 [CRITICAL] 이벤트를 쏩니다!
+      });
   };
 
   return (
@@ -249,6 +307,78 @@ const Dashboard = () => {
                 </span>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ 
+        padding: '1.5rem', 
+        backgroundColor: isPerfWarning ? '#fef2f2' : '#f8fafc', 
+        border: `2px solid ${isPerfWarning ? '#ef4444' : '#cbd5e1'}`, 
+        borderRadius: '8px', 
+        marginBottom: '2rem' 
+      }}>
+        <h4 style={{ margin: '0 0 1rem 0', color: isPerfWarning ? '#b91c1c' : '#0f172a' }}>
+          ⚡ 실시간 서버 성능(Performance) 모니터링
+        </h4>
+        <button className="btn" onClick={checkServerPerformance} style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer' }}>
+          현재 API 평균 응답 속도 확인 ⏱️
+        </button>
+        
+        {responseTime && (
+          <div style={{ marginTop: '1.5rem' }}>
+            <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>
+              평균 API 응답 시간: <span style={{ color: isPerfWarning ? '#ef4444' : '#10b981' }}>{responseTime} ms</span>
+              <span style={{ fontSize: '0.9rem', color: '#64748b', marginLeft: '10px', fontWeight: 'normal' }}>
+                (정상 기준: 500ms 이하)
+              </span>
+            </p>
+            
+            {isPerfWarning && (
+              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fee2e2', borderLeft: '4px solid #b91c1c', color: '#991b1b', fontWeight: 'bold' }}>
+                ⚠️ [성능 경고] API 응답 속도가 지연되고 있습니다! DB 쿼리 튜닝이나 병목 구간 확인이 필요합니다.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ 
+        padding: '1.5rem', 
+        backgroundColor: serverStatus === 'DOWN' ? '#fef2f2' : '#f8fafc', 
+        border: `2px solid ${serverStatus === 'DOWN' ? '#ef4444' : '#cbd5e1'}`, 
+        borderRadius: '8px', 
+        marginBottom: '2rem' 
+      }}>
+        <h4 style={{ margin: '0 0 1rem 0', color: serverStatus === 'DOWN' ? '#b91c1c' : '#0f172a' }}>
+          💓 실시간 시스템 가용성(Availability) 모니터링
+        </h4>
+        <button className="btn" onClick={checkServerAvailability} style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer' }}>
+          현재 서버 살아있어? (Health Check) 🩺
+        </button>
+        
+        {serverStatus && (
+          <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 'bold' }}>
+              현재 시스템 상태: 
+            </p>
+            
+            {/* 🌟 상태에 따라 초록불(UP) 또는 빨간불(DOWN) 표시 */}
+            {serverStatus === 'UP' ? (
+              <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                🟢 정상 구동 중 (UP)
+              </span>
+            ) : (
+              <span style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '6px 12px', borderRadius: '20px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                🔴 서비스 장애 (DOWN)
+              </span>
+            )}
+          </div>
+        )}
+        
+        {serverStatus === 'DOWN' && (
+          <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fee2e2', borderLeft: '4px solid #b91c1c', color: '#991b1b', fontWeight: 'bold' }}>
+            🚨 [가용성 경고] 서버와 통신할 수 없습니다! 즉시 인프라 팀에 장애(Incident) 티켓이 발송됩니다.
           </div>
         )}
       </div>

@@ -73,6 +73,66 @@ services:
     networks:
       - itsm-network
 
+  # 🌟 4. Prometheus 컨테이너
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: itsm-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml # 방금 만든 설정 파일 마운트
+    networks:
+      - itsm-network
+
+  # 🌟 5. Grafana 컨테이너
+  grafana:
+    image: grafana/grafana:latest
+    container_name: itsm-grafana
+    ports:
+      - "3001:3000" # 프론트엔드(3000)와 겹치지 않게 3001번 포트 사용
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # 초기 비밀번호 설정
+    depends_on:
+      - prometheus
+    networks:
+      - itsm-network
+
+  # 🌟 6. Node Exporter (범용 OS/인프라 모니터링)
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: itsm-node-exporter
+    ports:
+      - "9100:9100"
+    # Mac/Linux 호스트의 실제 데이터를 읽기 위해 시스템 경로를 마운트합니다.
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - itsm-network
+
+  # 🌟 7. MySQL / MariaDB Exporter (범용 DB 모니터링)
+  mariadb-exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: itsm-mariadb-exporter
+    ports:
+      - "9104:9104"
+    # 🌟 추가된 부분: 방금 만든 my.cnf 파일을 컨테이너 내부로 쏙 넣어줍니다.
+    volumes:
+      - ./my.cnf:/etc/.my.cnf:ro
+    # 🌟 추가된 부분: Exporter에게 "이 파일을 읽어서 DB에 접속해!"라고 명령합니다.
+    command:
+      - '--config.my-cnf=/etc/.my.cnf'
+    depends_on:
+      - itsm-db
+    networks:
+      - itsm-network
+
 networks:
   itsm-network:
     driver: bridge

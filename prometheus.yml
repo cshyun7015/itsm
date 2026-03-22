@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 10s # 10초마다 수집
+
+scrape_configs:
+  - job_name: 'itsm-spring-boot'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      # Docker Compose 내부 네트워크이므로 컨테이너 이름(itsm-backend)으로 접근!
+      - targets: ['itsm-backend:8080']
+  # 🌟 2. Node Exporter (OS 성능/용량/가용성)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # 🌟 3. MariaDB Exporter (DB 성능/용량/가용성)
+  - job_name: 'mariadb-exporter'
+    static_configs:
+      - targets: ['mariadb-exporter:9104']
+
+  # 🌟 기존 cadvisor 항목을 지우고, 아래 Docker Desktop 네이티브 수집기로 교체합니다!
+  - job_name: 'docker'
+    static_configs:
+      # 호스트(Mac)에서 열린 9323 포트를 찌르기 위한 특수 주소입니다.
+      - targets: ['host.docker.internal:9323']

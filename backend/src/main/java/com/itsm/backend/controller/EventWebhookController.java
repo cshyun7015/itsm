@@ -5,7 +5,7 @@ import com.itsm.backend.domain.Incident;
 import com.itsm.backend.domain.Priority;
 import com.itsm.backend.domain.TicketStatus;
 // 🌟 Company와 CompanyRepository 임포트 추가
-import com.itsm.backend.domain.Company;
+//import com.itsm.backend.domain.Company;
 import com.itsm.backend.repository.EventRepository;
 import com.itsm.backend.repository.IncidentRepository;
 import com.itsm.backend.repository.CompanyRepository;
@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -59,6 +60,53 @@ public class EventWebhookController {
         eventRepository.save(event);
 
         return ResponseEntity.ok("Event received successfully");
+    }
+
+    // =========================================================================
+    // 🌟 2. 새로 추가된 "Grafana 전용" 수신처
+    // =========================================================================
+    @PostMapping("/grafana")
+    @SuppressWarnings("unchecked") // 🌟 컴파일러에게 "이 제네릭 캐스팅은 안전하니 경고를 끄라"고 지시합니다.
+    public ResponseEntity<String> receiveGrafanaAlert(@RequestBody Map<String, Object> payload) {
+        log.info("📊 [Grafana 알람 수신] Webhook 도착!");
+
+        try {
+            // 그라파나는 여러 알람을 'alerts' 배열에 담아서 보냅니다.
+            List<Map<String, Object>> alerts = (List<Map<String, Object>>) payload.get("alerts");
+
+            if (alerts != null && !alerts.isEmpty()) {
+                for (Map<String, Object> alert : alerts) {
+                    String status = (String) alert.get("status"); // "firing"(발생) 또는 "resolved"(해제)
+
+                    // 알람이 발생("firing")했을 때만 처리
+                    if ("firing".equals(status)) {
+                        Map<String, Object> annotations = (Map<String, Object>) alert.getOrDefault("annotations", Map.of());
+                        Map<String, Object> labels = (Map<String, Object>) alert.getOrDefault("labels", Map.of());
+
+                        // 파싱 및 기본값 세팅
+                        String summary = (String) annotations.getOrDefault("summary", "시스템 임계치 초과 경고!");
+                        String instance = (String) labels.getOrDefault("instance", "unknown-node");
+                        // 이 부분이 에러가 났던 곳이죠? 아래와 같이 수정합니다.
+                        String severity = labels.getOrDefault("severity", "CRITICAL").toString().toUpperCase();
+
+                        // 우리 시스템의 Event 엔티티 규격에 맞게 변환
+                        Event newEvent = new Event();
+                        newEvent.setSource("Grafana Alerting");
+                        newEvent.setSeverity(severity);
+                        newEvent.setMessage(summary);
+                        newEvent.setNode(instance);
+                        newEvent.setStatus("NEW");
+
+                        // 🌟 핵심: 변환된 Event 객체를 작성해두신 기존 로직으로 던집니다! (코드 재사용의 정석)
+                        this.receiveEvent(newEvent);
+                    }
+                }
+            }
+            return ResponseEntity.ok("Grafana alert processed successfully");
+        } catch (Exception e) {
+            log.error("Grafana 알람 파싱 중 오류 발생", e);
+            return ResponseEntity.badRequest().body("Failed to parse Grafana payload");
+        }
     }
 
     @GetMapping("/events")
