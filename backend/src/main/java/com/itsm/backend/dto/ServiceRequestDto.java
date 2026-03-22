@@ -12,4 +12,5 @@ public class ServiceRequestDto {
     private String description;   // 상세 사유 및 내용
     private String requesterName; // 신청자 이름
     private String targetDate;    // 희망 완료일 (String으로 받아 처리)
+    private String approvalStatus; // 🌟 수동 수정을 위한 상태 필드 추가
 }

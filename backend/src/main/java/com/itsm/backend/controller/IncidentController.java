@@ -1,59 +1,64 @@
 package com.itsm.backend.controller;
 
 import com.itsm.backend.domain.Incident;
+import com.itsm.backend.domain.Priority;
+import com.itsm.backend.domain.TicketStatus;
+import com.itsm.backend.dto.IncidentHistoryDto;
 import com.itsm.backend.dto.IncidentRequestDto;
 import com.itsm.backend.service.IncidentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-import com.itsm.backend.dto.IncidentHistoryDto;
-
 @RestController
 @RequestMapping("/api/incidents")
-@CrossOrigin(origins = "http://localhost:3000") // React 연동 허용
+@CrossOrigin(origins = "http://localhost:3000")
 @RequiredArgsConstructor
 public class IncidentController {
 
     private final IncidentService incidentService;
 
-    // 인시던트 생성 API (POST /api/incidents)
+    // 🌟 페이징, 정렬, 검색이 모두 통합된 만능 조회 API
+    @GetMapping
+    public ResponseEntity<Page<Incident>> getIncidents(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sort,
+            @RequestParam(defaultValue = "desc") String direction,
+            @RequestParam(required = false, defaultValue = "requester") String searchType,
+            @RequestParam(required = false) String keyword) {
+        return ResponseEntity.ok(incidentService.getIncidents(page, size, sort, direction, searchType, keyword));
+    }
+
     @PostMapping
     public ResponseEntity<Incident> createIncident(@RequestBody IncidentRequestDto requestDto) {
         Incident createdIncident = incidentService.createIncident(requestDto);
         return ResponseEntity.ok(createdIncident);
     }
 
-    // 인시던트 검색 API (GET /api/incidents/search?searchType=...&keyword=...)
-    @GetMapping("/search")
-    public ResponseEntity<List<Incident>> searchIncidents(
-            @RequestParam String searchType,
-            @RequestParam String keyword) {
-
-        // 프론트엔드에서 전달한 searchType(requester 또는 company)에 따라 완전히 분리된 결과를 반환합니다.
-        List<Incident> incidents = incidentService.searchIncidents(searchType, keyword);
-        return ResponseEntity.ok(incidents);
-    }
-
-    // 인시던트 상태 업데이트 API
+    // 🌟 상태 및 중요도 부분 업데이트 (담당자/관리자 전용)
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
     public ResponseEntity<Incident> updateStatus(
             @PathVariable Long id,
-            @RequestParam String status,
+            @RequestParam(required = false) TicketStatus status,
+            @RequestParam(required = false) Priority priority,
             @RequestParam(required = false) String comment,
-            @RequestParam String updaterId) { // 임시로 updaterId를 쿼리 파라미터로 받음
+            @RequestParam String updaterId) {
 
-        Incident updatedIncident = incidentService.updateIncidentStatus(id, status, comment, updaterId);
+        Incident updatedIncident = incidentService.updateIncidentPartial(id, status, priority, comment, updaterId);
         return ResponseEntity.ok(updatedIncident);
     }
 
-    // 특정 티켓의 변경 이력 조회 API
     @GetMapping("/{id}/history")
     public ResponseEntity<List<IncidentHistoryDto>> getIncidentHistory(@PathVariable Long id) {
         List<IncidentHistoryDto> history = incidentService.getIncidentHistory(id);
         return ResponseEntity.ok(history);
     }
 
+    // 🌟 삭제(Delete) 기능은 컴플라이언스를 위해 제공하지 않습니다!
 }

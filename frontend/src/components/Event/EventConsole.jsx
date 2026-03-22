@@ -1,148 +1,242 @@
 import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../utils/api'; // 🌟 1. 403 에러 방지를 위해 apiFetch 임포트!
+import { 
+  Box, Typography, Button, Table, TableBody, TableCell, TableContainer, 
+  TableHead, TableRow, Paper, Chip, IconButton, Dialog, DialogTitle, 
+  DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, 
+  InputLabel, TablePagination, TableSortLabel 
+} from '@mui/material'; // 🌟 TableSortLabel 추가
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
+import { apiFetch } from '../../utils/api'; 
 
-const EventConsole = () => {
+function EventConsole() {
   const [events, setEvents] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12; // 관제 화면이므로 조금 더 많이(12개씩) 보여줍니다.
+  
+  // 페이징 상태
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalElements, setTotalElements] = useState(0); 
 
-  // API 호출하여 이벤트 목록 가져오기
+  // 🌟 정렬 상태 추가 (기본값: ID 내림차순)
+  const [orderBy, setOrderBy] = useState('id'); 
+  const [order, setOrder] = useState('desc'); 
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState('CREATE');
+  const [formData, setFormData] = useState({ id: null, source: '', severity: 'WARNING', message: '', node: '', status: 'NEW' });
+
+  const userRole = localStorage.getItem('userRole'); 
+  const canEdit = userRole === 'ROLE_AGENT' || userRole === 'ROLE_ADMIN';
+  const canDelete = userRole === 'ROLE_ADMIN';
+
+  // 🌟 정렬 파라미터(sort, direction)를 API URL에 추가
   const fetchEvents = () => {
-    // 🌟 2. 기본 fetch 대신 apiFetch 사용
-    apiFetch('/webhook/events')
+    apiFetch(`/events?page=${page}&size=${rowsPerPage}&sort=${orderBy}&direction=${order}`)
       .then(res => res.json())
       .then(data => {
-        const sortedData = data.sort((a, b) => b.id - a.id);
-        setEvents(sortedData);
+        setEvents(data.content);         
+        setTotalElements(data.totalElements); 
       })
       .catch(err => console.error('이벤트 로드 실패:', err));
   };
 
+  // 🌟 orderBy와 order가 바뀔 때도 데이터를 다시 불러오도록 의존성 배열에 추가
   useEffect(() => {
     fetchEvents();
-    // 실제 관제 센터처럼 10초마다 자동으로 새로고침 하도록 설정!
-    const interval = setInterval(fetchEvents, 10000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [page, rowsPerPage, orderBy, order]);
 
-  // 🌟 3. 이벤트를 장애(Incident) 티켓으로 전환하는 마법의 함수!
-  const handleCreateIncident = (ev) => {
-    if (!window.confirm(`해당 이벤트를 장애(Incident)로 접수하시겠습니까?\n메시지: ${ev.message}`)) return;
-
-    // 백엔드 인시던트 API가 요구하는 형식에 맞춰 자동 접수 데이터를 만듭니다.
-    const incidentPayload = {
-      title: `[자동접수] ${ev.severity} 이벤트 - ${ev.source}`,
-      description: `이벤트 관제 시스템에서 자동 전환된 장애입니다.\n- 메시지: ${ev.message}\n- 발생 노드: ${ev.node}\n- 발생 일시: ${ev.timestamp}`,
-      urgency: ev.severity === 'CRITICAL' ? 'HIGH' : 'MEDIUM',
-      status: 'OPEN',
-      category: 'INFRA'
-    };
-
-    apiFetch('/incidents', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(incidentPayload)
-    })
-    .then(res => {
-      if (res.ok) {
-        alert('🚨 장애 티켓이 성공적으로 생성되었습니다!');
-        // 💡 백엔드에 이벤트를 '처리됨(PROCESSED)'으로 바꾸는 API가 있다면 여기서 호출합니다.
-        // apiFetch(`/webhook/events/${ev.id}/status?status=PROCESSED`, { method: 'PATCH' });
-        fetchEvents(); // 목록 새로고침
-      } else {
-        alert('장애 접수에 실패했습니다.');
-      }
-    })
-    .catch(err => console.error('장애 전환 에러:', err));
+  // 🌟 테이블 헤더 클릭 시 정렬 방향/컬럼을 변경하는 핸들러
+  const handleSort = (property) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc'); // 누를 때마다 방향 토글
+    setOrderBy(property);             // 정렬 기준 컬럼 변경
+    setPage(0);                       // 정렬이 바뀌면 1페이지로 리셋
   };
 
-  const totalPages = Math.ceil(events.length / itemsPerPage);
-  const currentEvents = events.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
   const getSeverityStyle = (severity) => {
-    switch(severity) {
-      case 'CRITICAL': return { bg: '#fee2e2', text: '#ef4444', icon: '🚨' };
-      case 'WARNING': return { bg: '#fef3c7', text: '#d97706', icon: '⚠️' };
-      case 'INFO': return { bg: '#e0f2fe', text: '#0284c7', icon: 'ℹ️' };
-      default: return { bg: '#f1f5f9', text: '#64748b', icon: '📌' };
+    switch (severity?.toUpperCase()) {
+      case 'CRITICAL': return { bgcolor: '#fee2e2', color: '#dc2626', border: '1px solid #f87171' };
+      case 'WARNING': return { bgcolor: '#fef3c7', color: '#d97706', border: '1px solid #fbbf24' };
+      case 'INFO': return { bgcolor: '#dbeafe', color: '#2563eb', border: '1px solid #60a5fa' };
+      default: return { bgcolor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1' };
     }
   };
 
-  return (
-    <div>
-      <div className="action-bar" style={{ padding: '1rem', marginBottom: '1rem', backgroundColor: '#1e293b', color: 'white', borderRadius: '8px' }}>
-        <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          📡 통합 이벤트 관제 콘솔 (Event Monitoring)
-        </h3>
-        <button className="btn btn-outline" style={{ color: 'white', borderColor: 'white' }} onClick={fetchEvents}>
-          🔄 즉시 새로고침
-        </button>
-      </div>
-      
-      <div className="table-wrapper">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>심각도</th>
-              <th>발생 출처</th>
-              <th>메시지</th>
-              <th>노드 (IP/Host)</th>
-              <th>처리 상태</th>
-              <th>액션</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentEvents.map(ev => {
-              const style = getSeverityStyle(ev.severity);
-              return (
-                <tr key={ev.id} style={{ backgroundColor: ev.severity === 'CRITICAL' && ev.status === 'NEW' ? '#fff1f2' : 'transparent' }}>
-                  <td>{ev.id}</td>
-                  <td>
-                    <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold', backgroundColor: style.bg, color: style.text }}>
-                      {style.icon} {ev.severity}
-                    </span>
-                  </td>
-                  <td style={{ fontWeight: '600' }}>{ev.source}</td>
-                  <td style={{ fontWeight: 'bold', color: ev.severity === 'CRITICAL' ? '#e11d48' : 'var(--text-main)' }}>{ev.message}</td>
-                  <td>{ev.node || '-'}</td>
-                  <td>
-                    <span style={{ color: ev.status === 'PROCESSED' ? '#10b981' : (ev.status === 'NEW' ? '#ef4444' : '#64748b'), fontWeight: 'bold' }}>
-                      {ev.status === 'PROCESSED' ? '✅ 처리됨' : '🔥 미처리'}
-                    </span>
-                  </td>
-                  <td>
-                    {/* 🌟 미처리 상태인 경우에만 장애 전환 버튼 표시 */}
-                    {ev.status === 'NEW' ? (
-                      <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: '0.85rem' }} onClick={() => handleCreateIncident(ev)}>
-                        장애 전환 🚀
-                      </button>
-                    ) : (
-                      ev.relatedIncidentId ? (
-                        <span style={{ backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 'bold' }}>INC-{ev.relatedIncidentId}</span>
-                      ) : '-'
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {events.length === 0 && (
-              <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>수신된 이벤트가 없습니다. 시스템이 평화롭습니다!</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+  const handleChangePage = (event, newPage) => setPage(newPage);
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0); 
+  };
 
-      {/* 페이지네이션 */}
-      {totalPages > 1 && (
-        <div className="pagination-container">
-          <button className="page-btn" onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1}>이전</button>
-          <span style={{ margin: '0 1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{currentPage} / {totalPages}</span>
-          <button className="page-btn" onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>다음</button>
-        </div>
-      )}
-    </div>
+  const handleOpenCreate = () => {
+    setFormData({ id: null, source: '', severity: 'WARNING', message: '', node: '', status: 'NEW' });
+    setModalMode('CREATE');
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (event) => {
+    setFormData({ ...event });
+    setModalMode('EDIT');
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => setIsModalOpen(false);
+  const handleChange = (e) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleSubmit = async () => {
+    const url = modalMode === 'CREATE' ? '/events' : `/events/${formData.id}`;
+    const method = modalMode === 'CREATE' ? 'POST' : 'PUT';
+    try {
+      const res = await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
+      if (res.ok) {
+        handleCloseModal();
+        fetchEvents();
+      } else if (res.status === 403) alert('권한이 없습니다.');
+      else alert('저장에 실패했습니다.');
+    } catch (error) { console.error('저장 에러:', error); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('정말 이 이벤트를 삭제하시겠습니까? (관리자 전용)')) return;
+    try {
+      const res = await apiFetch(`/events/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        if (events.length === 1 && page > 0) setPage(page - 1);
+        else fetchEvents();
+      } else if (res.status === 403) alert('삭제 권한이 없습니다.');
+      else alert('삭제에 실패했습니다.');
+    } catch (error) { console.error('삭제 에러:', error); }
+  };
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
+          🚨 이벤트 관제 (Event Console)
+        </Typography>
+        {canEdit && (
+          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleOpenCreate}>
+            수동 이벤트 등록
+          </Button>
+        )}
+      </Box>
+
+      <Paper sx={{ boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+        <TableContainer>
+          <Table sx={{ minWidth: 650 }}>
+            <TableHead sx={{ backgroundColor: '#f8fafc' }}>
+              <TableRow>
+                {/* 🌟 각 TableCell에 TableSortLabel을 적용합니다. */}
+                <TableCell sx={{ fontWeight: 'bold' }}>
+                  <TableSortLabel active={orderBy === 'id'} direction={orderBy === 'id' ? order : 'asc'} onClick={() => handleSort('id')}>
+                    ID
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>
+                  <TableSortLabel active={orderBy === 'severity'} direction={orderBy === 'severity' ? order : 'asc'} onClick={() => handleSort('severity')}>
+                    심각도
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>
+                  <TableSortLabel active={orderBy === 'source'} direction={orderBy === 'source' ? order : 'asc'} onClick={() => handleSort('source')}>
+                    발생 소스
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>
+                  <TableSortLabel active={orderBy === 'node'} direction={orderBy === 'node' ? order : 'asc'} onClick={() => handleSort('node')}>
+                    발생 노드
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>
+                  <TableSortLabel active={orderBy === 'message'} direction={orderBy === 'message' ? order : 'asc'} onClick={() => handleSort('message')}>
+                    메시지
+                  </TableSortLabel>
+                </TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>
+                  <TableSortLabel active={orderBy === 'status'} direction={orderBy === 'status' ? order : 'asc'} onClick={() => handleSort('status')}>
+                    상태
+                  </TableSortLabel>
+                </TableCell>
+                {canEdit && <TableCell sx={{ fontWeight: 'bold', textAlign: 'center' }}>관리</TableCell>}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {events.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={canEdit ? 7 : 6} align="center" sx={{ py: 5, color: 'text.secondary' }}>현재 수신된 이벤트가 없습니다.</TableCell>
+                </TableRow>
+              ) : (
+                events.map((ev) => (
+                  <TableRow key={ev.id} hover>
+                    <TableCell>EVT-{ev.id}</TableCell>
+                    <TableCell><Chip label={ev.severity} size="small" sx={{ fontWeight: 'bold', ...getSeverityStyle(ev.severity) }} /></TableCell>
+                    <TableCell>{ev.source}</TableCell>
+                    <TableCell>{ev.node || '-'}</TableCell>
+                    <TableCell>{ev.message}</TableCell>
+                    <TableCell><Chip label={ev.status} variant="outlined" size="small" sx={{ color: 'text.secondary', borderColor: 'divider' }} /></TableCell>
+                    {canEdit && (
+                      <TableCell align="center">
+                        <IconButton color="primary" onClick={() => handleOpenEdit(ev)} size="small"><EditIcon fontSize="small" /></IconButton>
+                        {canDelete && <IconButton color="error" onClick={() => handleDelete(ev.id)} size="small"><DeleteIcon fontSize="small" /></IconButton>}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+
+        <TablePagination
+          component="div"
+          count={totalElements}      
+          page={page}                
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}  
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+          labelRowsPerPage="페이지당 표시:"
+        />
+      </Paper>
+
+      {/* 모달(Dialog) 코드는 기존과 완벽히 동일하므로 생략 없이 그대로 유지됩니다. */}
+      {/* (위 기존 코드에 이어 붙어있는 형태입니다) */}
+      <Dialog open={isModalOpen} onClose={handleCloseModal} fullWidth maxWidth="sm">
+        <DialogTitle sx={{ fontWeight: 'bold' }}>{modalMode === 'CREATE' ? '신규 이벤트 등록' : '이벤트 수정'}</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField label="발생 소스" name="source" value={formData.source} onChange={handleChange} fullWidth />
+            <TextField label="발생 노드" name="node" value={formData.node} onChange={handleChange} fullWidth />
+            <FormControl fullWidth>
+              <InputLabel>심각도 (Severity)</InputLabel>
+              <Select name="severity" value={formData.severity} onChange={handleChange} label="심각도 (Severity)">
+                <MenuItem value="INFO">INFO (정보)</MenuItem>
+                <MenuItem value="WARNING">WARNING (경고)</MenuItem>
+                <MenuItem value="CRITICAL">CRITICAL (심각)</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField label="메시지" name="message" value={formData.message} onChange={handleChange} fullWidth multiline rows={3} />
+            {modalMode === 'EDIT' && (
+              <FormControl fullWidth>
+                <InputLabel>상태 (Status)</InputLabel>
+                <Select name="status" value={formData.status} onChange={handleChange} label="상태 (Status)">
+                  <MenuItem value="NEW">NEW (신규)</MenuItem>
+                  <MenuItem value="ACKNOWLEDGED">ACKNOWLEDGED (인지됨)</MenuItem>
+                  <MenuItem value="RESOLVED">RESOLVED (해결됨)</MenuItem>
+                  <MenuItem value="IGNORED">IGNORED (무시됨)</MenuItem>
+                </Select>
+              </FormControl>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseModal} color="inherit">취소</Button>
+          <Button onClick={handleSubmit} variant="contained" color="primary">{modalMode === 'CREATE' ? '등록하기' : '수정하기'}</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
-};
+}
 
 export default EventConsole;

@@ -1,22 +1,20 @@
 package com.itsm.backend.service;
 
-import com.itsm.backend.domain.Company;
-import com.itsm.backend.domain.Incident;
-import com.itsm.backend.domain.Priority;
-import com.itsm.backend.domain.TicketStatus;
+import com.itsm.backend.domain.*;
+import com.itsm.backend.dto.IncidentHistoryDto;
 import com.itsm.backend.dto.IncidentRequestDto;
 import com.itsm.backend.repository.CompanyRepository;
+import com.itsm.backend.repository.IncidentHistoryRepository;
 import com.itsm.backend.repository.IncidentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-
-import com.itsm.backend.domain.IncidentHistory;
-import com.itsm.backend.repository.IncidentHistoryRepository;
-
-import com.itsm.backend.dto.IncidentHistoryDto;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,74 +23,73 @@ public class IncidentService {
 
     private final IncidentRepository incidentRepository;
     private final CompanyRepository companyRepository;
-    // 🌟 History Repository 추가
     private final IncidentHistoryRepository historyRepository;
+
+    // 🌟 서버 사이드 페이징, 정렬, 검색 통합 로직
+    @Transactional(readOnly = true)
+    public Page<Incident> getIncidents(int page, int size, String sort, String direction, String searchType, String keyword) {
+        Sort.Direction dir = Sort.Direction.fromString(direction);
+        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sort));
+
+        if (keyword != null && !keyword.isEmpty()) {
+            if ("requester".equals(searchType)) {
+                return incidentRepository.findByRequesterNameContaining(keyword, pageable);
+            } else if ("company".equals(searchType)) {
+                return incidentRepository.findByCompany_NameContaining(keyword, pageable);
+            }
+        }
+        return incidentRepository.findAll(pageable);
+    }
 
     @Transactional
     public Incident createIncident(IncidentRequestDto dto) {
-        // 1. 고객사 정보 조회 (없으면 예외 발생)
         Company company = companyRepository.findById(dto.getCompanyId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 고객사입니다."));
 
-        // 2. Builder 대신 기본 생성자(new)와 Setter를 사용하여 객체 생성
         Incident incident = new Incident();
-        incident.setTitle(dto.getTitle()); // 부모 클래스의 필드
-        incident.setDescription(dto.getDescription()); // 부모 클래스의 필드
-        incident.setRequesterName(dto.getRequesterName()); // 부모 클래스의 필드
-
-        // 🌟 이 줄을 추가해 주세요! (필수 값인 ID에 임시 사번 부여)
-        incident.setRequesterId("EMP-9999");
-
-        incident.setPriority(Priority.valueOf(dto.getPriority())); // 부모 클래스의 필드
-        incident.setStatus(TicketStatus.OPEN); // 초기 상태 고정
-
-        // 3. 연관관계 매핑 (고객사 셋팅)
+        incident.setTitle(dto.getTitle());
+        incident.setDescription(dto.getDescription());
+        incident.setRequesterName(dto.getRequesterName());
+        incident.setPriority(Priority.valueOf(dto.getPriority()));
         incident.setCompany(company);
+        incident.setStatus(TicketStatus.OPEN);
+        incident.setCiId(dto.getCiId());     // 추가된 자산 ID
+        incident.setCiName(dto.getCiName()); // 추가된 자산명
 
         return incidentRepository.save(incident);
     }
 
-    @Transactional(readOnly = true)
-    public List<Incident> searchIncidents(String searchType, String keyword) {
-        if ("requester".equalsIgnoreCase(searchType)) {
-            return incidentRepository.findByRequesterNameContaining(keyword);
-        } else if ("company".equalsIgnoreCase(searchType)) {
-            return incidentRepository.findByCompany_NameContaining(keyword);
-        }
-
-        return incidentRepository.findAll();
-    }
-
-    // 🌟 티켓 상태 업데이트 및 이력 기록 로직
+    // 🌟 제목, 내용 등은 수정 불가. 상태, 우선순위, 코멘트 등만 수정 가능 (부분 수정)
     @Transactional
-    public Incident updateIncidentStatus(Long incidentId, String newStatusStr, String updateComment, String updaterId) {
-        Incident incident = incidentRepository.findById(incidentId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 인시던트입니다."));
+    public Incident updateIncidentPartial(Long id, TicketStatus newStatus, Priority newPriority, String comment, String updaterId) {
+        Incident incident = incidentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 티켓입니다."));
 
         TicketStatus oldStatus = incident.getStatus();
-        TicketStatus newStatus = TicketStatus.valueOf(newStatusStr.toUpperCase());
 
-        // 상태가 실제로 변경되었을 때만 처리
-        if (oldStatus != newStatus) {
+        // 허용된 필드만 업데이트
+        if (newStatus != null) {
             incident.setStatus(newStatus);
-
-            // 해결(RESOLVED) 상태로 변경 시 복구 시간 기록
             if (newStatus == TicketStatus.RESOLVED) {
                 incident.setRestoredAt(java.time.LocalDateTime.now());
             }
-
-            // 변경 이력(Audit Trail) 저장
-            IncidentHistory history = new IncidentHistory();
-            history.setIncident(incident);
-            history.setChangedBy(updaterId);
-            history.setPreviousStatus(oldStatus);
-            history.setNewStatus(newStatus);
-            history.setUpdateComment(updateComment);
-
-            historyRepository.save(history);
+        }
+        if (newPriority != null) {
+            incident.setPriority(newPriority);
         }
 
-        return incident; // 변경 감지(Dirty Checking)에 의해 incident 테이블은 자동 업데이트 됨
+        Incident savedIncident = incidentRepository.save(incident);
+
+        // 변경 이력(Audit Trail) 남기기
+        IncidentHistory history = new IncidentHistory();
+        history.setIncident(savedIncident);
+        history.setChangedBy(updaterId);
+        history.setPreviousStatus(oldStatus);
+        history.setNewStatus(savedIncident.getStatus());
+        history.setUpdateComment(comment);
+        historyRepository.save(history);
+
+        return savedIncident;
     }
 
     @Transactional(readOnly = true)
