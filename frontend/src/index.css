@@ -1,5 +1,10 @@
+/* 기존 코드가 있다면 body 부분만 이렇게 덮어써 주세요 */
 body {
   margin: 0;
   padding: 0;
-  background-color: #f4f6f8;
+  background-color: #0f172a; /* 🌟 넥서스 기본 다크 배경색 */
+  color: #f8fafc;            /* 🌟 기본 텍스트 색상 (밝은 회색) */
+  font-family: 'Pretendard', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

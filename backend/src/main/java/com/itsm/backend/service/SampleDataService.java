@@ -41,7 +41,16 @@ public class SampleDataService {
     public void generateDummyData() {
         Random random = new Random();
 
-        // 1. 테스트용 사용자 계정 3개 생성
+        // 🌟 1. 기본 고객사(Company)를 가장 먼저 생성 또는 조회합니다!
+        Company defaultCompany = companyRepository.findById(1L)
+                .orElseGet(() -> {
+                    Company c = new Company();
+                    c.setName("기본 고객사 (Sample Corp)");
+                    c.setCode("SAMPLE-CORP"); // 식별 코드 추가
+                    return companyRepository.save(c);
+                });
+
+        // 🌟 2. 테스트용 기본 계정에 방금 만든 고객사를 매핑합니다!
         if (userRepository.findByUsername("admin").isEmpty()) {
             String encodedPassword = passwordEncoder.encode("1234");
 
@@ -51,6 +60,7 @@ public class SampleDataService {
             admin.setName("시스템 관리자");
             admin.setDepartment("IT 인프라팀");
             admin.setRole(Role.ROLE_ADMIN);
+            admin.setCompany(defaultCompany); // 🌟 고객사 할당
             userRepository.save(admin);
 
             User agent = new User();
@@ -59,6 +69,7 @@ public class SampleDataService {
             agent.setName("서비스 데스크");
             agent.setDepartment("IT 지원팀");
             agent.setRole(Role.ROLE_AGENT);
+            agent.setCompany(defaultCompany); // 🌟 고객사 할당
             userRepository.save(agent);
 
             User user = new User();
@@ -67,6 +78,7 @@ public class SampleDataService {
             user.setName("일반 임직원");
             user.setDepartment("영업팀");
             user.setRole(Role.ROLE_USER);
+            user.setCompany(defaultCompany); // 🌟 고객사 할당
             userRepository.save(user);
         }
 
@@ -101,14 +113,6 @@ public class SampleDataService {
                 commonCodeRepository.save(code);
             }
         }
-
-        // 3. 기본 고객사(Company) 생성
-        Company defaultCompany = companyRepository.findById(1L)
-                .orElseGet(() -> {
-                    Company c = new Company();
-                    c.setName("기본 고객사 (Sample Corp)");
-                    return companyRepository.save(c);
-                });
 
         // 4. 서비스 카탈로그(ServiceCatalog) 생성
         List<ServiceCatalog> catalogList = serviceCatalogRepository.findAll();
@@ -241,8 +245,8 @@ public class SampleDataService {
             }
         }
 
-        // 10. 사용자(User) 100명 생성
-        if (userRepository.count() == 0) {
+        // 🌟 3. 100명의 더미 사용자를 만들 때도 고객사를 매핑해줍니다!
+        if (userRepository.count() <= 3) { // 3명(admin, agent, user)만 있을 때 실행
             String[] departments = {"IT기획팀", "인프라운영팀", "보안팀", "영업1팀", "경영지원팀"};
             Role[] roles = {Role.ROLE_ADMIN, Role.ROLE_AGENT, Role.ROLE_USER};
             String encodedPassword = passwordEncoder.encode("1234");
@@ -254,6 +258,8 @@ public class SampleDataService {
                 u.setName("사용자" + i);
                 u.setDepartment(departments[random.nextInt(departments.length)]);
                 u.setRole(roles[random.nextInt(roles.length)]);
+                u.setStatus("ACTIVE");
+                u.setCompany(defaultCompany); // 🌟 고객사 할당
                 userRepository.save(u);
             }
         }
