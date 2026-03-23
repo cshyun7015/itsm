@@ -112,18 +112,48 @@ public class SampleDataService {
                 code.setDescription("IT 자산 분류 코드");
                 commonCodeRepository.save(code);
             }
+
+            saveCommonCode("CATALOG_CATEGORY", "SW", "소프트웨어 (SW)", 1);
+            saveCommonCode("CATALOG_CATEGORY", "HW", "하드웨어 (HW)", 2);
+            saveCommonCode("CATALOG_CATEGORY", "ACCESS", "접근권한 (ACCESS)", 3);
+            saveCommonCode("CATALOG_CATEGORY", "INFRA", "인프라 (INFRA)", 4);
+            saveCommonCode("CATALOG_CATEGORY", "NW", "네트워크 (NW)", 5);
+            saveCommonCode("CATALOG_CATEGORY", "AWS", "CLOUD (AWS)", 6);
+
+            saveCommonCode("AUDIENCE_GROUP", "ALL", "전체 임직원", 1);
+            saveCommonCode("AUDIENCE_GROUP", "IT_ONLY", "IT 부서 전용", 2);
+            saveCommonCode("AUDIENCE_GROUP", "NEW_HIRE", "신규 입사자 전용", 3);
         }
 
         // 4. 서비스 카탈로그(ServiceCatalog) 생성
         List<ServiceCatalog> catalogList = serviceCatalogRepository.findAll();
         if (catalogList.isEmpty()) {
+            // 🌟 1. 하드코딩 대신 DB에서 활성화("Y")된 공통 코드 목록을 순서대로 불러옵니다.
+            List<CommonCode> categoryCodes = commonCodeRepository.findByGroupCodeAndUseYnOrderByDisplayOrderAsc("CATALOG_CATEGORY", "Y");
+            List<CommonCode> audienceCodes = commonCodeRepository.findByGroupCodeAndUseYnOrderByDisplayOrderAsc("AUDIENCE_GROUP", "Y");
+
             String[] names = {"노트북 대여", "VPN 권한 신청", "소프트웨어 설치", "메일 계정 생성", "서버 리소스 증설"};
-            String[] categories = {"HW", "ACCESS", "SW", "ACCOUNT", "INFRA"};
+
             for (int i = 0; i < names.length; i++) {
                 ServiceCatalog cat = new ServiceCatalog();
                 cat.setName(names[i]);
-                cat.setCategory(categories[i]);
                 cat.setDescription(names[i] + " 서비스입니다.");
+
+                // 🌟 2. 불러온 공통 코드 리스트에서 값을 추출하여 셋팅합니다.
+                // 리스트 크기(size)를 활용해 '%' 연산(나머지)을 하므로,
+                // 이름(names) 배열이 몇 개가 되든 인덱스 초과 에러 없이 공통 코드를 골고루 할당합니다.
+                if (!categoryCodes.isEmpty()) {
+                    cat.setCategory(categoryCodes.get(i % categoryCodes.size()).getCodeValue());
+                } else {
+                    cat.setCategory("GENERAL"); // 만약 DB에 코드가 없을 경우의 안전장치
+                }
+
+                if (!audienceCodes.isEmpty()) {
+                    cat.setTargetAudience(audienceCodes.get(i % audienceCodes.size()).getCodeValue());
+                } else {
+                    cat.setTargetAudience("ALL"); // 만약 DB에 코드가 없을 경우의 안전장치
+                }
+
                 cat.setEstimatedDays(i + 1);
                 catalogList.add(serviceCatalogRepository.save(cat));
             }
@@ -375,5 +405,16 @@ public class SampleDataService {
         policy.setDescription(p.name() + " 등급 장애는 " + targetHour + "시간 이내에 해결해야 합니다.");
 
         return policy;
+    }
+
+    // 헬퍼 메서드 (기존 useYn 포맷 적용)
+    private void saveCommonCode(String group, String val, String name, int order) {
+        CommonCode code = new CommonCode();
+        code.setGroupCode(group);
+        code.setCodeValue(val);
+        code.setCodeName(name);
+        code.setDisplayOrder(order);
+        code.setUseYn("Y");
+        commonCodeRepository.save(code);
     }
 }

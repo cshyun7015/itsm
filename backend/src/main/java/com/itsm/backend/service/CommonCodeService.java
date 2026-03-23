@@ -8,6 +8,8 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 public class CommonCodeService {
@@ -31,6 +33,12 @@ public class CommonCodeService {
         CommonCode c = codeRepository.findById(id).orElseThrow();
         updateEntity(c, dto);
         return codeRepository.save(c);
+    }
+
+    // 🌟 추가: 셀렉트 박스용 서비스 메서드
+    @Transactional(readOnly = true)
+    public List<CommonCode> getActiveCodesForDropdown(String groupCode) {
+        return codeRepository.findByGroupCodeAndUseYnOrderByDisplayOrderAsc(groupCode, "Y");
     }
 
     @Transactional

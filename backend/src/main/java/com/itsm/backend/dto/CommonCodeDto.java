@@ -8,4 +8,7 @@ public class CommonCodeDto {
     private String codeName;
     private String description;
     private String useYn;
+
+    // 🌟 추가
+    private Integer displayOrder;
 }

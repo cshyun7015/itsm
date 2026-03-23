@@ -16,4 +16,7 @@ public class CommonCode {
     private String description;// 설명
 
     private String useYn = "Y"; // 사용 여부 (Y/N)
+
+    // 🌟 추가: UI 셀렉트 박스 표시 순서
+    private Integer displayOrder = 1;
 }
